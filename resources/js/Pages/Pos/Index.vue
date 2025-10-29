@@ -74,10 +74,21 @@
                     <div class="flex flex-col items-start justify-center w-full md:px-12 px-4">
                         <div class="flex items-center justify-between w-full">
                             <h2 class="md:text-5xl text-4xl font-bold text-black">Billing Details</h2>
-                            <span class="flex cursor-pointer" @click="isSelectModalOpen = true">
-                                <p class="text-xl text-blue-600 font-bold">User Manual</p>
-                                <img src="/images/selectpsoduct.svg" class="w-6 h-6 ml-2" />
-                            </span>
+                            <div class="flex items-center">
+                              <select
+                                v-model="selectedManualType"
+                                class="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="products">Products</option>
+                                <option value="newspapers">Newspapers</option>
+                              </select>
+                              <button
+                                @click="openManualModal"
+                                class="ml-4 px-6 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                              >
+                                Open
+                              </button>
+                            </div>
                         </div>
 
                         <div class="flex items-end justify-between w-full my-5 border-2 border-black rounded-2xl">
@@ -356,8 +367,17 @@
         :custom_discount="custom_discount" />
     <AlertModel v-model:open="isAlertModalOpen" :message="message" />
 
-    <SelectProductModel v-model:open="isSelectModalOpen" :allcategories="allcategories" :colors="colors" :sizes="sizes"
-        @selected-products="handleSelectedProducts" />
+    <SelectProductModel
+      v-model:open="isSelectProductModalOpen"
+      :allcategories="allcategories"
+      :colors="colors"
+      :sizes="sizes"
+      @selected-products="handleSelectedProducts"
+    />
+    <SelectNewspaperModel
+      v-model:open="isSelectNewspaperModalOpen"
+      @import-newspapers="handleImportedNewspapers"
+    />
     <Footer />
 </template>
 <script setup>
@@ -375,6 +395,7 @@ import CurrencyInput from "@/Components/custom/CurrencyInput.vue";
 import SelectProductModel from "@/Components/custom/SelectProductModel.vue";
 import ProductAutoComplete from "@/Components/custom/ProductAutoComplete.vue";
 import { generateOrderId } from "@/Utils/Other.js";
+import SelectNewspaperModel from "@/Components/custom/SelectNewspaperModel.vue";
 
 const product = ref(null);
 const error = ref(null);
@@ -419,6 +440,9 @@ const customer = ref({
 const employee_id = ref("");
 
 const selectedPaymentMethod = ref("cash");
+const selectedManualType = ref("products");
+const isSelectProductModalOpen = ref(false);
+const isSelectNewspaperModalOpen = ref(false);
 
 const refreshData = () => {
     router.visit(route("pos.index"), {
@@ -711,6 +735,43 @@ const handleSelectedProducts = (selectedProducts) => {
             });
         }
     });
+};
+
+const openManualModal = () => {
+  if (selectedManualType.value === "products") {
+    isSelectProductModalOpen.value = true;
+  } else if (selectedManualType.value === "newspapers") {
+    isSelectNewspaperModalOpen.value = true;
+  }
+};
+
+const handleSelectedNewspaper = (newspaper) => {
+  console.log("Selected newspaper:", newspaper);
+  // Add logic to handle the selected newspaper
+};
+
+const handleImportedNewspapers = (newspapers) => {
+  newspapers.forEach((newspaper) => {
+    const existingItem = products.value.find((item) => item.id === newspaper.id && item.is_newspaper === true);
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      products.value.push({
+        id: newspaper.id,
+        name: newspaper.name,
+        barcode: newspaper.barcode,
+        selling_price: newspaper.selling_price,
+        cost_price: newspaper.cost_price ?? 0,
+        stock_quantity: newspaper.stock_quantity,
+        discount: newspaper.discount ?? 0,
+        discounted_price: newspaper.discount_price ?? newspaper.selling_price,
+        is_newspaper: true,  // This is critical!
+        image: null,
+        quantity: 1,
+        apply_discount: false,
+      });
+    }
+  });
 };
 
 // const searchTerm = ref(form.barcode);

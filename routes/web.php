@@ -19,6 +19,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\StockTransactionController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\ManualPosController;
+use App\Http\Controllers\NewspaperController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -83,7 +84,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos', [PosController::class, 'getProduct'])->name('pos.getProduct');
     Route::post('/get-coupon', [PosController::class, 'getCoupon'])->name('pos.getCoupon');
-    Route::post('/pos/submit', [PosController::class, 'submit'])->name('pos.checkout');
+    Route::post('/pos/submit', [PosController::class, 'submit'])->name('pos.submit');
+    Route::get('/api/newspapers', [PosController::class, 'getNewspapers'])->name('pos.getNewspapers');
     Route::resource('payment', PaymentController::class);
     Route::resource('reports', ReportController::class);
     Route::get('/batch-management/search', [ReportController::class, 'searchByCode']);
@@ -121,7 +123,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/products', [ProductController::class, 'fetchProducts']);
     Route::post('/api/sale/items', [ReturnItemController::class, 'fetchSaleItems'])->name('sale.items');
 
+    
 
+    Route::resource('newspapers', NewspaperController::class);
 });
-
-Route::get('/barcode/{id}', [CategoryController::class, 'showBarcode']);

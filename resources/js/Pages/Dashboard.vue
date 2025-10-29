@@ -70,6 +70,27 @@
         </div>
       </Link>
 
+      <Link href="/newspapers" v-if="HasRole(['Admin', 'Manager'])">
+        <div class="dashboard-card bg-[#008B8B]">
+          <div class="card-content">
+            <div class="icon-container">
+              <img
+                src="/images/dashboard/newspapers.png"
+                class="icon"
+                alt="dresshub.lk"
+              />
+            </div>
+            <div class="text-container">
+              <p class="title">Newspapers</p>
+              <p class="description">
+                Add, update, and manage newspapers details, including pricing and
+                stock levels.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       <Link href="/suppliers" v-if="HasRole(['Admin', 'Manager'])">
         <div class="dashboard-card bg-[#914F1E]">
           <div class="card-content">

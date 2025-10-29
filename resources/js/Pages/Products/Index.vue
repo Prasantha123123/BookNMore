@@ -330,7 +330,7 @@
         <template v-else>
           <div class="col-span-4 text-center text-gray-500">
             <p class="text-center text-red-500 text-[17px]">
-              No Products Available
+              No Products Available1
             </p>
           </div>
         </template>

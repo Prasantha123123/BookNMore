@@ -10,6 +10,7 @@ class StockTransaction extends Model
     use HasFactory;
     protected $fillable = [
         'product_id',
+        'newspaper_id',
         'transaction_type',
         'quantity',
         'transaction_date',
@@ -30,4 +31,8 @@ class StockTransaction extends Model
         return $this->belongsTo(Supplier::class)->withTrashed();
 
      }
+        public function newspaper()
+        {
+            return $this->belongsTo(Newspaper::class);
+        }
 }
