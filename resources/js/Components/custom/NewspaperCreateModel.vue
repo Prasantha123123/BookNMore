@@ -360,7 +360,7 @@ import {
   TransitionChild,
   TransitionRoot,
 } from "@headlessui/vue";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useForm } from "@inertiajs/vue3";
 
 const emit = defineEmits(["update:open"]);
@@ -418,6 +418,30 @@ const form = useForm({
   discount: null,
   discount_price: null,
 
+});
+
+// Function to fetch next batch number
+async function fetchBatchNumber(productcode) {
+  try {
+    const response = await fetch(`/newspapers/batch?productcode=${encodeURIComponent(productcode)}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    const data = await response.json();
+    form.batch_no = data.batch_no.toString();
+  } catch (error) {
+    console.error('Error fetching batch number:', error);
+    form.batch_no = "1"; // Default to 1 if there's an error
+  }
+}
+
+// Watch for changes in product code
+watch(() => form.productcode, (newValue) => {
+  if (newValue && newValue.trim() !== '') {
+    fetchBatchNumber(newValue);
+  } else {
+    form.batch_no = ""; // Clear batch number if product code is empty
+  }
 });
 
 const submit = () => {

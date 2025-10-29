@@ -9,6 +9,22 @@ use Inertia\Inertia;
 class NewspaperController extends Controller
 {
     /**
+     * Get the next batch number for a product code
+     */
+    public function getNextBatchNumber(Request $request)
+    {
+        $productcode = $request->query('productcode');
+        
+        $latestBatch = Newspaper::where('productcode', $productcode)
+            ->orderBy('created_at', 'desc')
+            ->value('batch_no');
+            
+        $nextBatch = $latestBatch ? ((int)$latestBatch + 1) : 1;
+        
+        return response()->json(['batch_no' => $nextBatch]);
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()

@@ -124,6 +124,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/sale/items', [ReturnItemController::class, 'fetchSaleItems'])->name('sale.items');
 
     
-
+    
+    Route::get('/newspapers/batch', [NewspaperController::class, 'getNextBatchNumber']);
     Route::resource('newspapers', NewspaperController::class);
 });
