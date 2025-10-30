@@ -101,6 +101,12 @@
                 </p>
               </div>
 
+              <div class="flex items-center justify-between">
+                <p class="text-sm font-bold tracking-wider text-gray-400">
+                  Returns: <span class="text-white">{{ newspaper.return || 0 }}</span>
+                </p>
+              </div>
+
               <div class="flex items-center justify-right space-x-2">
   <button
     :disabled="!HasRole(['Admin'])"
@@ -151,6 +157,41 @@
           </div>
         </template>
       </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="newspapers && newspapers.data && newspapers.data.length > 0" class="flex items-center justify-center mt-8 space-x-4">
+        <template v-for="link in newspapers.links" :key="link.label">
+          <Link
+            v-if="link.url"
+            :href="link.url"
+            class="px-4 py-2 text-sm font-medium rounded-md"
+            :class="{
+              'bg-blue-600 text-white': link.active,
+              'bg-gray-200 text-gray-700 hover:bg-gray-300': !link.active
+            }"
+            v-html="link.label"
+          />
+          <span
+            v-else
+            class="px-4 py-2 text-sm font-medium text-gray-500 bg-gray-100 rounded-md"
+            v-html="link.label"
+          />
+        </template>
+      </div>
+
+      <!-- Items per page selector -->
+      <div class="flex items-center justify-end mt-4">
+        <select
+          v-model="perPage"
+          @change="changeItemsPerPage"
+          class="px-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="8">8 per page</option>
+          <option value="12">12 per page</option>
+          <option value="16">16 per page</option>
+          <option value="24">24 per page</option>
+        </select>
+      </div>
     </div>
   </div>
   <NewspaperCreateModel v-model:open="isCreateModalOpen" />
@@ -196,16 +237,22 @@ const props = defineProps({
 });
 
 const search = ref(props.search || "");
+const perPage = ref('12'); // Default items per page
 
 const performSearch = debounce(() => {
   applyFilters();
 }, 500);
+
+const changeItemsPerPage = () => {
+  applyFilters();
+};
 
 const applyFilters = (page) => {
   router.get(
     route("newspapers.index"),
     {
       search: search.value,
+      perPage: perPage.value,
     },
     { preserveState: true }
   );
@@ -238,22 +285,77 @@ const deleteNewspaper = (newspaperId) => {
 </script>
 
 <style lang="css">
-.pagination-disabled {
-  color: rgb(37 99 235);
-  transition: all 0.5s ease;
-  background: rgb(229 231 235 / var(--tw-bg-opacity));
-}
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 20px;
-  font-size: 14px;
-  float: right;
+.pagination-nav {
+  display: inline-flex;
+  margin: -1px;
 }
 
-.pagination a:first-child,
-.pagination a:last-child {
-  padding: 8px 16px;
+.pagination-link {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: #6b7280;
+  background-color: white;
+  border: 1px solid #d1d5db;
+}
+
+.pagination-link:hover {
+  color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.pagination-link.active {
+  color: white;
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.pagination-link:first-child {
+  border-top-left-radius: 0.375rem;
+  border-bottom-left-radius: 0.375rem;
+}
+
+.pagination-link:last-child {
+  border-top-right-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+}
+
+.items-per-page {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.items-per-page:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Dark theme adjustments */
+.dark .pagination-link {
+  color: #9ca3af;
+  background-color: #1f2937;
+  border-color: #4b5563;
+}
+
+.dark .pagination-link:hover {
+  color: #60a5fa;
+  background-color: #374151;
+}
+
+.dark .pagination-link.active {
+  color: white;
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.dark .items-per-page {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #d1d5db;
 }
 </style>

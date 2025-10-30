@@ -25,6 +25,7 @@ class Newspaper extends Model
         'selling_price',
         'discount',
         'discount_price',
+        'return',
     ];
 
     public function category()

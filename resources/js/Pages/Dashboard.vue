@@ -91,6 +91,27 @@
         </div>
       </Link>
 
+       <Link href="/Services" v-if="HasRole(['Admin', 'Manager'])">
+        <div class="dashboard-card bg-[#008B8B]">
+          <div class="card-content">
+            <div class="icon-container">
+              <img
+                src="/images/dashboard/printout.png"
+                class="icon"
+                alt="dresshub.lk"
+              />
+            </div>
+            <div class="text-container">
+              <p class="title">Print Services</p>
+              <p class="description">
+                Add, update, and manage print services, including laminating, laminating and
+                binding.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       <Link href="/suppliers" v-if="HasRole(['Admin', 'Manager'])">
         <div class="dashboard-card bg-[#914F1E]">
           <div class="card-content">

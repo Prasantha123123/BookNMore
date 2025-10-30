@@ -27,12 +27,28 @@ class NewspaperController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $newspapers = Newspaper::paginate(10); // Adjust the number of items per page
+        $perPage = $request->input('perPage', 12); // Default to 12 items per page
+        $query = Newspaper::query();
+
+        // Apply search filter if search term is provided
+        if ($request->has('search')) {
+            $searchTerm = $request->input('search');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('productcode', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('language', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        $newspapers = $query->paginate($perPage);
+        
         return Inertia::render('Newspaper/Index', [
             'newspapers' => $newspapers,
             'totalNewspapers' => Newspaper::count(),
+            'search' => $request->input('search'),
+            'perPage' => $perPage,
         ]);
     }
 
@@ -63,7 +79,8 @@ class NewspaperController extends Controller
             'cost_price' => 'required|numeric',
             'selling_price' => 'required|numeric',
             'discount' => 'nullable|numeric',
-            'discount_price' => 'nullable|numeric'
+            'discount_price' => 'nullable|numeric',
+            'return' => 'required|integer|min:0'
         ]);
 
         Newspaper::create($validated);

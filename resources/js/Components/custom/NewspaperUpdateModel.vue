@@ -246,6 +246,26 @@
                 </div>
 
                 <div class="flex items-center gap-8 mt-6">
+                  <!-- Return Count input -->
+                  <div class="w-full">
+                    <label class="block text-sm font-medium text-gray-300"
+                      >Return Count:</label
+                    >
+                    <input
+                      v-model="form.return"
+                      type="number"
+                      min="0"
+                      id="return"
+                      required
+                      class="w-full px-4 py-2 mt-2 text-black rounded-md focus:outline-none focus:ring focus:ring-blue-600"
+                    />
+                    <span v-if="form.errors.return" class="mt-4 text-red-500">{{
+                      form.errors.return
+                    }}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-8 mt-6">
                    <!-- Discount input -->
                   <div class="w-full">
                     <label class="block text-sm font-medium text-gray-300"
@@ -336,6 +356,7 @@ const form = useForm({
   selling_price: "",
   discount: null,
   discount_price: null,
+  return: 0,
 });
 
 watch(
@@ -360,6 +381,7 @@ watch(
       form.selling_price = newValue.selling_price || "";
       form.discount = newValue.discount || "";
       form.discount_price = newValue.discount_price || "";
+      form.return = newValue.return || 0;
     }
   },
   { immediate: true }

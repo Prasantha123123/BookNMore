@@ -319,6 +319,29 @@
                     >
                   </div>
                 </div>
+
+                <!-- Row 9: Return -->
+                <div class="flex items-center gap-8">
+                  <div class="w-full">
+                    <label class="block text-sm font-medium text-gray-300"
+                      >Return Count:</label
+                    >
+                    <input
+                      v-model="form.return"
+                      type="number"
+                      min="0"
+                      id="return"
+                      required
+                      placeholder="Enter number of returned newspapers"
+                      class="w-full px-4 py-2 mt-2 text-black rounded-md focus:outline-none focus:ring focus:ring-blue-600"
+                    />
+                    <span
+                      v-if="form.errors.return"
+                      class="mt-4 text-red-500"
+                      >{{ form.errors.return }}</span
+                    >
+                  </div>
+                </div>
               </div>
 
               <!-- Modal Buttons -->
@@ -417,7 +440,7 @@ const form = useForm({
   selling_price: "",
   discount: null,
   discount_price: null,
-
+  return: 0,
 });
 
 // Function to fetch next batch number
