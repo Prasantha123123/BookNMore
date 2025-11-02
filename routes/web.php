@@ -20,6 +20,12 @@ use App\Http\Controllers\StockTransactionController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\ManualPosController;
 use App\Http\Controllers\NewspaperController;
+use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\PhotocopyServiceController;
+use App\Http\Controllers\PrintoutController;
+use App\Http\Controllers\BindingController;
+use App\Http\Controllers\LaminatingController;
+use App\Http\Controllers\RefillPhotocopyController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -123,8 +129,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/products', [ProductController::class, 'fetchProducts']);
     Route::post('/api/sale/items', [ReturnItemController::class, 'fetchSaleItems'])->name('sale.items');
 
-    
+    Route::get('/services/photocopy', function () {
+        return Inertia::render('Services/PhotocopyServicePage');
+    });
+
+    Route::get('/services/printout', function () {
+        return Inertia::render('Services/PrintoutServicePage');
+    });
     
     Route::get('/newspapers/batch', [NewspaperController::class, 'getNextBatchNumber']);
     Route::resource('newspapers', NewspaperController::class);
+    Route::resource('services', ServiceController::class);
+    Route::resource('photocopy-services', PhotocopyServiceController::class);
+    Route::resource('printout-services', PrintoutController::class);
+    Route::resource('binding-services', BindingController::class);
+    Route::resource('laminating-services', LaminatingController::class);
+
+    // Refill Photocopy Routes
+    Route::get('/refillphotocopy', [RefillPhotocopyController::class, 'index'])->name('refillphotocopy.index');
+    Route::post('/refillphotocopy', [RefillPhotocopyController::class, 'store'])->name('refillphotocopy.store');
+    
 });
+
+

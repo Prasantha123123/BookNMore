@@ -91,8 +91,8 @@
         </div>
       </Link>
 
-       <Link href="/Services" v-if="HasRole(['Admin', 'Manager'])">
-        <div class="dashboard-card bg-[#008B8B]">
+       <Link href="/services" v-if="HasRole(['Admin', 'Manager'])">
+        <div class="dashboard-card bg-[#e893b8]">
           <div class="card-content">
             <div class="icon-container">
               <img
@@ -102,7 +102,7 @@
               />
             </div>
             <div class="text-container">
-              <p class="title">Print Services</p>
+              <p class="title">Services</p>
               <p class="description">
                 Add, update, and manage print services, including laminating, laminating and
                 binding.
