@@ -277,9 +277,21 @@ const fetchServices = async () => {
       },
     });
     const data = await response.json();
-    services.value = data;
+
+    // Handle response with `photocopyServices` property
+    if (data?.success && Array.isArray(data.photocopyServices)) {
+      services.value = data.photocopyServices;
+    } else if (Array.isArray(data)) {
+      services.value = data;
+    } else if (Array.isArray(data.data)) {
+      services.value = data.data;
+    } else {
+      console.error('Invalid data format received:', data);
+      services.value = []; // Reset to empty array if invalid data
+    }
   } catch (error) {
     console.error('Error fetching services:', error);
+    services.value = []; // Reset to empty array on error
   }
 };
 
@@ -333,8 +345,11 @@ onMounted(() => {
 });
 
 const filteredServices = computed(() => {
+  if (!Array.isArray(services.value)) {
+    return []; // Return an empty array if services is not an array
+  }
   return services.value.filter((service) =>
-    service.name.toLowerCase().includes(search.value.toLowerCase())
+    service?.name?.toLowerCase().includes(search.value.toLowerCase()) || false
   );
 });
 

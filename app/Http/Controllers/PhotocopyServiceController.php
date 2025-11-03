@@ -13,9 +13,12 @@ class PhotocopyServiceController extends Controller
      */
     public function index(Request $request)
     {
-        if ($request->expectsJson()) {
+        if ($request->expectsJson() || $request->wantsJson()) {
             $photocopyServices = PhotocopyService::all();
-            return response()->json($photocopyServices);
+            return response()->json([
+                'success' => true,
+                'photocopyServices' => $photocopyServices
+            ]);
         }
 
         $photocopyServices = PhotocopyService::paginate(10);

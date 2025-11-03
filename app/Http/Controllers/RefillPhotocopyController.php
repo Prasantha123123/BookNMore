@@ -27,11 +27,19 @@ class RefillPhotocopyController extends Controller
             'product_id' => 'required|exists:products,id',
             'product_name' => 'required|string|max:255',
             'quantity' => 'required|integer|min:1',
-            'stock' => 'required|integer|min:0',
         ]);
 
-        // Create the refill record
-        RefillPhotocopy::create($validated);
+        // Add refill record
+        $refill = RefillPhotocopy::create([
+            'product_id' => $validated['product_id'],
+            'product_name' => $validated['product_name'],
+            'quantity' => $validated['quantity'],
+            'stock' => $validated['quantity'],
+        ]);
+
+        // Update total stock in refill table
+        $totalStock = RefillPhotocopy::where('product_id', $validated['product_id'])->sum('stock');
+        RefillPhotocopy::where('id', $refill->id)->update(['stock' => $totalStock]);
 
         // Deduct the refill quantity from the product's available stock
         $product = Product::find($validated['product_id']);
@@ -40,6 +48,6 @@ class RefillPhotocopyController extends Controller
             $product->save();
         }
 
-        return response()->json(['message' => 'Refill added successfully and product stock updated'], 201);
+        return response()->json(['message' => 'Refill added successfully and total stock updated'], 201);
     }
 }

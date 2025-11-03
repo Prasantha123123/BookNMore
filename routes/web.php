@@ -133,6 +133,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Services/PhotocopyServicePage');
     });
 
+    Route::get('/services/laminating', function () {
+        return Inertia::render('Services/LaminatingServicePage');
+    });
+
+    Route::get('/services/binding', function () {
+        return Inertia::render('Services/BindingServicePage');
+    });
+
     Route::get('/services/printout', function () {
         return Inertia::render('Services/PrintoutServicePage');
     });

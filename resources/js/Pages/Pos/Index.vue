@@ -73,7 +73,7 @@
                 <div class="flex md:w-1/2 w-full p-8 border-4 border-black rounded-3xl">
                     <div class="flex flex-col items-start justify-center w-full md:px-12 px-4">
                         <div class="flex items-center justify-between w-full">
-                            <h2 class="md:text-5xl text-4xl font-bold text-black">Billing Details</h2>
+                            <h2 class="md:text-5xl text-4xl font-bold text-black">Billing Details1</h2>
                             <div class="flex items-center">
                               <select
                                 v-model="selectedManualType"
@@ -81,6 +81,7 @@
                               >
                                 <option value="products">Products</option>
                                 <option value="newspapers">Newspapers</option>
+                                 <option value="photocopy">Photocopy</option>
                               </select>
                               <button
                                 @click="openManualModal"
@@ -378,6 +379,10 @@
       v-model:open="isSelectNewspaperModalOpen"
       @import-newspapers="handleImportedNewspapers"
     />
+    <SelectPhotocopyModel
+      v-model:open="isSelectPhotocopyModalOpen"
+      @import-photocopies="handleImportedPhotocopies"
+    />
     <Footer />
 </template>
 <script setup>
@@ -387,7 +392,7 @@ import Banner from "@/Components/Banner.vue";
 import PosSuccessModel from "@/Components/custom/PosSuccessModel.vue";
 import AlertModel from "@/Components/custom/AlertModel.vue";
 import { useForm, router } from "@inertiajs/vue3";
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed, watch, defineAsyncComponent } from 'vue';
 import { Head } from "@inertiajs/vue3";
 import { Link } from "@inertiajs/vue3";
 import axios from "axios";
@@ -396,6 +401,10 @@ import SelectProductModel from "@/Components/custom/SelectProductModel.vue";
 import ProductAutoComplete from "@/Components/custom/ProductAutoComplete.vue";
 import { generateOrderId } from "@/Utils/Other.js";
 import SelectNewspaperModel from "@/Components/custom/SelectNewspaperModel.vue";
+// Use dynamic import for SelectPhotocopyModel
+const SelectPhotocopyModel = defineAsyncComponent(() => 
+  import("@/Components/custom/SelectPhotocopyModel.vue")
+);
 
 const product = ref(null);
 const error = ref(null);
@@ -443,6 +452,7 @@ const selectedPaymentMethod = ref("cash");
 const selectedManualType = ref("products");
 const isSelectProductModalOpen = ref(false);
 const isSelectNewspaperModalOpen = ref(false);
+const isSelectPhotocopyModalOpen = ref(false);
 
 const refreshData = () => {
     router.visit(route("pos.index"), {
@@ -488,7 +498,6 @@ const orderId = computed(() => {
 });
 
 const submitOrder = async () => {
-    // if (window.confirm("Are you sure you want to confirm the order?")) {
     console.log(products.value);
     if (balance.value < 0) {
         isAlertModalOpen.value = true;
@@ -517,7 +526,6 @@ const submitOrder = async () => {
             "Error submitting customer details:",
             error.response?.data || error.message
         );
-        // alert("Failed to submit customer details. Please try again.");
     }
 };
 // };
@@ -667,7 +675,7 @@ const submitBarcode = async () => {
         }
     } catch (err) {
         if (err.response.status === 422) {
-            isAlertModalOpen.value = true;
+            isAlertModal.value = true;
             message.value = err.response.data.message;
         }
 
@@ -738,10 +746,12 @@ const handleSelectedProducts = (selectedProducts) => {
 };
 
 const openManualModal = () => {
-  if (selectedManualType.value === "products") {
-    isSelectProductModalOpen.value = true;
+  if (selectedManualType.value === "photocopy") {
+    isSelectPhotocopyModalOpen.value = true;
   } else if (selectedManualType.value === "newspapers") {
     isSelectNewspaperModalOpen.value = true;
+  } else {
+    isSelectProductModalOpen.value = true;
   }
 };
 
@@ -774,6 +784,42 @@ const handleImportedNewspapers = (newspapers) => {
   });
 };
 
+const handleImportedPhotocopies = (photocopies) => {
+  photocopies.forEach((photocopy) => {
+    const existingItem = products.value.find(
+      (item) => item.id === photocopy.id && item.is_photocopy === true
+    );
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      products.value.push({
+        ...photocopy,
+        quantity: 1,
+        is_photocopy: true,
+        selling_price: photocopy.totalprice, // Ensure selling_price is included
+      });
+    }
+  });
+};
+
+const photocopyTotalPrice = computed(() => {
+    return products.value
+        .filter((item) => item.is_photocopy)
+        .reduce((total, item) => total + item.totalprice * item.quantity, 0);
+});
+
+const generateReceipt = () => {
+    const receiptDetails = products.value
+        .filter((item) => item.is_photocopy)
+        .map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            totalprice: item.totalprice * item.quantity,
+        }));
+
+    console.log("Receipt Details:", receiptDetails);
+    return receiptDetails;
+};
 // const searchTerm = ref(form.barcode);
 
 // // Computed property for filtered product results

@@ -22,5 +22,32 @@ class PhotocopyService extends Model
         'color',
         'price',
         'service_charge',
+        'totalprice',
     ];
+
+    /**
+     * The "booting" method of the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($photocopyService) {
+            $photocopyService->totalprice = $photocopyService->price + $photocopyService->service_charge;
+        });
+
+        static::updating(function ($photocopyService) {
+            $photocopyService->totalprice = $photocopyService->price + $photocopyService->service_charge;
+        });
+    }
+
+    /**
+     * Calculate the total price
+     *
+     * @return float
+     */
+    public function calculateTotalPrice()
+    {
+        return $this->price + $this->service_charge;
+    }
 }

@@ -13,6 +13,8 @@ use App\Models\Size;
 use App\Models\StockTransaction;
 use App\Models\Employee;
 use App\Models\Newspaper;
+use App\Models\PhotocopyService;
+use App\Models\RefillPhotocopy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -201,6 +203,7 @@ class PosController extends Controller
             // Process each item (product or newspaper)
             foreach ($products as $item) {
                 $isNewspaper = isset($item['is_newspaper']) && $item['is_newspaper'] === true;
+                $isPhotocopy = isset($item['is_photocopy']) && $item['is_photocopy'] === true;
 
                 if ($isNewspaper) {
                     // Handle newspaper
@@ -243,6 +246,59 @@ class PosController extends Controller
                     // Update newspaper stock
                     $newspaperModel->update([
                         'stock_quantity' => $newStockQuantity,
+                    ]);
+                } elseif ($isPhotocopy) {
+                    // Handle photocopy service
+                    $photocopyModel = PhotocopyService::find($item['id']);
+                    $refillStock = RefillPhotocopy::where('product_id', $item['id'])->sum('stock');
+
+                    if (!$photocopyModel) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => "Photocopy service not found: {$item['name']}"
+                        ], 404);
+                    }
+
+                    if ($refillStock < $item['quantity']) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => "Insufficient stock for photocopy service: {$photocopyModel->name} ({$refillStock} available)"
+                        ], 423);
+                    }
+
+                    // Deduct stock from refill
+                    $remainingQuantity = $item['quantity'];
+                    $refills = RefillPhotocopy::where('product_id', $item['id'])->orderBy('id')->get();
+
+                    foreach ($refills as $refill) {
+                        if ($remainingQuantity <= 0) break;
+
+                        if ($refill->stock >= $remainingQuantity) {
+                            $refill->stock -= $remainingQuantity;
+                            $refill->save();
+                            $remainingQuantity = 0;
+                        } else {
+                            $remainingQuantity -= $refill->stock;
+                            $refill->stock = 0;
+                            $refill->save();
+                        }
+                    }
+
+                    // Create sale item for photocopy service
+                    SaleItem::create([
+                        'sale_id' => $sale->id,
+                        'photocopy_id' => $item['id'], // Added photocopy_id
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['selling_price'],
+                        'total_price' => $item['quantity'] * $item['selling_price'],
+                    ]);
+
+                    // Create stock transaction for photocopy service
+                    StockTransaction::create([
+                        'photocopy_service_id' => $item['id'],
+                        'transaction_type' => 'Sold',
+                        'quantity' => $item['quantity'],
+                        'transaction_date' => now(),
                     ]);
                 } else {
                     // Handle product

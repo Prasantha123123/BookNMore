@@ -40,20 +40,20 @@
           <i class="ri-printer-line text-4xl mb-2"></i>
           Printout
         </Link>
-        <button
-          @click="() => { openServiceModal('Binding'); }"
+        <Link
+          href="/services/binding"
           class="flex flex-col items-center justify-center px-6 py-8 text-xl font-bold text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 shadow-lg"
         >
           <i class="ri-bookmark-line text-4xl mb-2"></i>
           Binding
-        </button>
-        <button
-          @click="() => { openServiceModal('Laminating'); }"
+        </Link>
+        <Link
+          href="/services/laminating"
           class="flex flex-col items-center justify-center px-6 py-8 text-xl font-bold text-white bg-red-500 rounded-lg hover:bg-red-600 shadow-lg"
         >
           <i class="ri-file-shield-line text-4xl mb-2"></i>
           Laminating
-        </button>
+        </Link>
       </div>
 
       
@@ -78,9 +78,6 @@ const isEditModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
 const isPhotocopyModalOpen = ref(false);
 const isPrintoutModalOpen = ref(false);
-const isBindingModalOpen = ref(false);
-const isLaminatingModalOpen = ref(false);
-
 const selectedService = ref(null);
 
 const openEditModal = (service) => {
@@ -91,11 +88,6 @@ const openEditModal = (service) => {
 const openDeleteModal = (service) => {
   selectedService.value = service;
   isDeleteModalOpen.value = true;
-};
-
-const openLaminatingModal = () => {
-  console.log('Opening Laminating Modal');
-  isLaminatingModalOpen.value = true;
 };
 
 const openPhotocopyModal = () => {
@@ -109,11 +101,6 @@ const openPrintoutModal = () => {
   isPrintoutModalOpen.value = true;
 };
 
-const openBindingModal = () => {
-  console.log('Opening Binding Modal');
-  isBindingModalOpen.value = true;
-};
-
 const openServiceModal = (serviceType) => {
   if (serviceType === 'Photocopy') {
     openPhotocopyModal();
@@ -121,12 +108,8 @@ const openServiceModal = (serviceType) => {
    else if (serviceType === 'Printout') {
     openPrintoutModal();
   }
-  else if (serviceType === 'Binding') {
-    openBindingModal();
-  }
-  else if (serviceType === 'Laminating') {
-    openLaminatingModal();
-  }
+  // Binding uses direct Link navigation now
+  // Laminating uses direct Link navigation now
   // Add logic for other service types if needed
 };
 

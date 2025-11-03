@@ -1,11 +1,10 @@
 <template>
-  <div v-if="modalOpen" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
+  <div class="page-content">
+    <div class="content-wrapper">
+      <div class="page-header">
         <h2>Laminating Services</h2>
-        <button @click="closeModal" class="close-button">Close</button>
       </div>
-      <div class="modal-body">
+      <div class="page-body">
         <!-- Add Button and Search Bar in One Row -->
         <div class="controls-row">
           <div class="search-bar">
@@ -139,41 +138,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, defineProps, defineEmits, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
 
-const props = defineProps({
-  open: Boolean,
-});
-
-const emit = defineEmits(['update:open']);
-
-const modalOpen = ref(props.open);
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
 const search = ref("");
 const editingService = ref(null);
-
-// Watch for changes in the open prop
-watch(
-  () => props.open,
-  (newVal) => {
-    modalOpen.value = newVal;
-  }
-);
-
-// Also watch local modalOpen to sync with parent
-watch(
-  () => modalOpen.value,
-  (newVal) => {
-    emit('update:open', newVal);
-  }
-);
-
-const closeModal = () => {
-  modalOpen.value = false;
-  emit('update:open', false);
-};
 
 const openCreateForm = () => {
   isCreateModalOpen.value = true;
@@ -317,17 +288,33 @@ const deleteService = (id) => {
 </script>
 
 <style scoped>
-.modal {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  top: 0;
-  left: 0;
+
+.page-content {
   width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  margin-bottom: 200px;
+}
+
+.content-wrapper {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.page-header h2 {
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
 }
 
 .modal-content {

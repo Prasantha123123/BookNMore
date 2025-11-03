@@ -13,10 +13,10 @@ class SaleItem extends Model
         'sale_id',
         'product_id',
         'newspaper_id',
+        'photocopy_id', // Added photocopy_id
         'quantity',
         'unit_price',
         'total_price',
-
     ];
 
 
@@ -33,5 +33,10 @@ class SaleItem extends Model
     public function newspaper()
     {
         return $this->belongsTo(Newspaper::class);
+    }
+
+    public function photocopyService()
+    {
+        return $this->belongsTo(PhotocopyService::class, 'photocopy_id', 'id');
     }
 }
