@@ -332,13 +332,13 @@ class ComposerStaticInit42bb3ddbd308bc2eae77ae44fb1ef286
         ),
         'Spatie\\LaravelIgnition\\' => 
         array (
-            0 => __DIR__ . '/..' . '/spatie/error-solutions/legacy/laravel-ignition',
-            1 => __DIR__ . '/..' . '/spatie/laravel-ignition/src',
+            0 => __DIR__ . '/..' . '/spatie/laravel-ignition/src',
+            1 => __DIR__ . '/..' . '/spatie/error-solutions/legacy/laravel-ignition',
         ),
         'Spatie\\Ignition\\' => 
         array (
-            0 => __DIR__ . '/..' . '/spatie/error-solutions/legacy/ignition',
-            1 => __DIR__ . '/..' . '/spatie/ignition/src',
+            0 => __DIR__ . '/..' . '/spatie/ignition/src',
+            1 => __DIR__ . '/..' . '/spatie/error-solutions/legacy/ignition',
         ),
         'Spatie\\FlareClient\\' => 
         array (
@@ -374,8 +374,8 @@ class ComposerStaticInit42bb3ddbd308bc2eae77ae44fb1ef286
         ),
         'Psr\\Http\\Message\\' => 
         array (
-            0 => __DIR__ . '/..' . '/psr/http-message/src',
-            1 => __DIR__ . '/..' . '/psr/http-factory/src',
+            0 => __DIR__ . '/..' . '/psr/http-factory/src',
+            1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
         'Psr\\Http\\Client\\' => 
         array (
@@ -2985,6 +2985,7 @@ class ComposerStaticInit42bb3ddbd308bc2eae77ae44fb1ef286
         'Illuminate\\View\\ViewFinderInterface' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/View/ViewFinderInterface.php',
         'Illuminate\\View\\ViewName' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/View/ViewName.php',
         'Illuminate\\View\\ViewServiceProvider' => __DIR__ . '/..' . '/laravel/framework/src/Illuminate/View/ViewServiceProvider.php',
+        'Inertia\\AlwaysProp' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/AlwaysProp.php',
         'Inertia\\Commands\\CreateMiddleware' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Commands/CreateMiddleware.php',
         'Inertia\\Commands\\StartSsr' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Commands/StartSsr.php',
         'Inertia\\Commands\\StopSsr' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Commands/StopSsr.php',
@@ -3001,7 +3002,8 @@ class ComposerStaticInit42bb3ddbd308bc2eae77ae44fb1ef286
         'Inertia\\Ssr\\HttpGateway' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Ssr/HttpGateway.php',
         'Inertia\\Ssr\\Response' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Ssr/Response.php',
         'Inertia\\Ssr\\SsrException' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Ssr/SsrException.php',
-        'Inertia\\Testing\\Assert' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Testing/Assert.php',
+        'Inertia\\Support\\Header' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Support/Header.php',
+        'Inertia\\Support\\LaravelVapor' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Support/LaravelVapor.php',
         'Inertia\\Testing\\AssertableInertia' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Testing/AssertableInertia.php',
         'Inertia\\Testing\\Concerns\\Debugging' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Testing/Concerns/Debugging.php',
         'Inertia\\Testing\\Concerns\\Has' => __DIR__ . '/..' . '/inertiajs/inertia-laravel/src/Testing/Concerns/Has.php',
