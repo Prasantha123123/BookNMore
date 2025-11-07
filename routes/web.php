@@ -29,6 +29,7 @@ use App\Http\Controllers\RefillPhotocopyController;
 use App\Http\Controllers\RefillPrintoutController;
 use App\Http\Controllers\BindingRefillController;
 use App\Http\Controllers\RefillLaminatingController;
+use App\Http\Controllers\SimReloadController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -113,7 +114,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('/quotation', QuotationController::class);
     Route::post('/api/save-quotation', [QuotationController::class, 'saveQuotationPdf']);
 
-
+    Route::get('/sim-reload', [SimReloadController::class, 'index'])->name('simreload.index');
+    Route::get('/sim-reload/mobitel', [SimReloadController::class, 'mobitel'])->name('simreload.mobitel');
+    Route::get('/sim-reload/dialog', [SimReloadController::class, 'dialog'])->name('simreload.dialog');
+    Route::get('/sim-reload/airtel', [SimReloadController::class, 'airtel'])->name('simreload.airtel');
+    Route::get('/sim-reload/hutch', [SimReloadController::class, 'hutch'])->name('simreload.hutch');
 
  Route::get('/add_promotion', [ProductController::class, 'addPromotion']);
     Route::post('/submit_promotion', [ProductController::class, 'submitPromotion']);

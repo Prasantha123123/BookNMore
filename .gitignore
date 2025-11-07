@@ -20,3 +20,4 @@ yarn-error.log
 deploy.sh
 refresh_seed.sh
 merge-development.sh
+*.sqlite*
