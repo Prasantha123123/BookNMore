@@ -19,7 +19,6 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\StockTransactionController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\ManualPosController;
-<<<<<<< HEAD
 use App\Http\Controllers\NewspaperController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PhotocopyServiceController;
@@ -30,9 +29,7 @@ use App\Http\Controllers\RefillPhotocopyController;
 use App\Http\Controllers\RefillPrintoutController;
 use App\Http\Controllers\BindingRefillController;
 use App\Http\Controllers\RefillLaminatingController;
-=======
 use App\Http\Controllers\SimReloadController;
->>>>>>> main
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
