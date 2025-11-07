@@ -11,6 +11,7 @@
             <input v-model="search" type="text" placeholder="Search printout services..." />
           </div>
           <button @click="openCreateForm" class="add-button">Add New Printout Service</button>
+          <button @click="openRefillPopup" class="add-button">Refill</button>
         </div>
 
         <table class="service-table">
@@ -189,6 +190,14 @@
             </div>
           </div>
         </div>
+
+        <!-- Refill Modal -->
+        <PrintoutRefillPopup 
+          v-if="isRefillPopupOpen" 
+          @close="handleCloseRefillPopup" 
+          :isOpen="isRefillPopupOpen" 
+          :modelValue="isRefillPopupOpen" 
+        />
       </div>
     </div>
   </div>
@@ -197,9 +206,11 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import PrintoutRefillPopup from './PrintoutRefillPopup.vue';
 
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
+const isRefillPopupOpen = ref(false);
 const search = ref("");
 const editingService = ref(null);
 
@@ -311,6 +322,17 @@ const deleteService = (id) => {
       },
     });
   }
+};
+
+// Add debugging logs to openRefillPopup and @close event
+const openRefillPopup = () => {
+  console.log("Opening refill popup...");
+  isRefillPopupOpen.value = true;
+};
+
+const handleCloseRefillPopup = () => {
+  console.log("Closing refill popup...");
+  isRefillPopupOpen.value = false;
 };
 </script>
 

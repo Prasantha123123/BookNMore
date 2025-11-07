@@ -82,6 +82,9 @@
                                 <option value="products">Products</option>
                                 <option value="newspapers">Newspapers</option>
                                  <option value="photocopy">Photocopy</option>
+                                 <option value="printout">Printout</option>
+                                 <option value="binding">Binding</option>
+                                 <option value="Laminating">Laminating</option>
                               </select>
                               <button
                                 @click="openManualModal"
@@ -383,6 +386,10 @@
       v-model:open="isSelectPhotocopyModalOpen"
       @import-photocopies="handleImportedPhotocopies"
     />
+    <SelectPrintoutModel
+      v-model:open="isSelectPrintoutModalOpen"
+      @import-printouts="handleImportedPrintouts"
+    />
     <Footer />
 </template>
 <script setup>
@@ -401,6 +408,8 @@ import SelectProductModel from "@/Components/custom/SelectProductModel.vue";
 import ProductAutoComplete from "@/Components/custom/ProductAutoComplete.vue";
 import { generateOrderId } from "@/Utils/Other.js";
 import SelectNewspaperModel from "@/Components/custom/SelectNewspaperModel.vue";
+import SelectPrintoutModel from '@/Components/custom/SelectPrintoutModel.vue';
+
 // Use dynamic import for SelectPhotocopyModel
 const SelectPhotocopyModel = defineAsyncComponent(() => 
   import("@/Components/custom/SelectPhotocopyModel.vue")
@@ -453,6 +462,7 @@ const selectedManualType = ref("products");
 const isSelectProductModalOpen = ref(false);
 const isSelectNewspaperModalOpen = ref(false);
 const isSelectPhotocopyModalOpen = ref(false);
+const isSelectPrintoutModalOpen = ref(false);
 
 const refreshData = () => {
     router.visit(route("pos.index"), {
@@ -750,6 +760,8 @@ const openManualModal = () => {
     isSelectPhotocopyModalOpen.value = true;
   } else if (selectedManualType.value === "newspapers") {
     isSelectNewspaperModalOpen.value = true;
+  } else if (selectedManualType.value === "printout") {
+    isSelectPrintoutModalOpen.value = true;
   } else {
     isSelectProductModalOpen.value = true;
   }
@@ -797,6 +809,24 @@ const handleImportedPhotocopies = (photocopies) => {
         quantity: 1,
         is_photocopy: true,
         selling_price: photocopy.totalprice, // Ensure selling_price is included
+      });
+    }
+  });
+};
+
+const handleImportedPrintouts = (printouts) => {
+  printouts.forEach((printout) => {
+    const existingItem = products.value.find(
+      (item) => item.id === printout.id && item.is_printout === true
+    );
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      products.value.push({
+        ...printout,
+        quantity: 1,
+        is_printout: true,
+        selling_price: printout.totalprice, // Ensure selling_price is included
       });
     }
   });

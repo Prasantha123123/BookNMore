@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\LaminatingService;
+use App\Models\Product;
 use Inertia\Inertia;
 
 class LaminatingController extends Controller
@@ -79,5 +80,34 @@ class LaminatingController extends Controller
         $laminatingService->delete();
 
         return redirect()->back()->with('success', 'Service deleted successfully');
+    }
+
+    /**
+     * Handle the refill stock functionality.
+     */
+    public function refillStock(Request $request)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $product = Product::findOrFail($validated['product_id']);
+
+        // Check if product has enough stock
+        if ($product->stock_quantity < $validated['quantity']) {
+            return response()->json([
+                'message' => 'Insufficient stock available. Available stock: ' . $product->stock_quantity
+            ], 422);
+        }
+
+        // Update stock
+        $product->stock_quantity += $validated['quantity'];
+        $product->save();
+
+        return response()->json([
+            'message' => 'Stock refilled successfully',
+            'product' => $product
+        ], 200);
     }
 }

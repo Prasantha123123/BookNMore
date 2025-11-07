@@ -5,20 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class RefillPhotocopy extends Model
+class BindingRefill extends Model
 {
     use HasFactory;
 
+    protected $table = 'refill_binding';
+
     protected $fillable = [
         'product_id',
-        'product_code',
+         'product_code',
         'product_name',
         'quantity',
-        'stock',
+        'total_stock',
     ];
-       
+
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id');
+        return $this->belongsTo(Product::class);
     }
 }

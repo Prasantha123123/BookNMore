@@ -11,6 +11,7 @@
             <input v-model="search" type="text" placeholder="Search laminating services..." />
           </div>
           <button @click="openCreateForm" class="add-button">Add New Laminating Service</button>
+           <button @click="openRefillPopup" class="add-button">Add Refill</button>
         </div>
 
         <table class="service-table">
@@ -132,6 +133,13 @@
             </div>
           </div>
         </div>
+
+        <!-- Refill Popup -->
+        <LaminatingRefillPopup
+          :isOpen="isRefillPopupOpen"
+          @close="closeRefillPopup"
+          @refill-submitted="fetchServices"
+        />
       </div>
     </div>
   </div>
@@ -140,9 +148,11 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import LaminatingRefillPopup from './LaminatingRefillPopup.vue';
 
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
+const isRefillPopupOpen = ref(false);
 const search = ref("");
 const editingService = ref(null);
 
@@ -159,6 +169,10 @@ const closeEditModal = () => {
   isEditModalOpen.value = false;
   editingService.value = null;
   editForm.reset();
+};
+
+const closeRefillPopup = () => {
+  isRefillPopupOpen.value = false;
 };
 
 // Create form
@@ -225,6 +239,11 @@ const submitForm = () => {
       console.error('Validation errors:', errors);
     },
   });
+};
+
+const openRefillPopup = () => {
+  console.log("Opening refill popup...");
+  isRefillPopupOpen.value = true;
 };
 
 const editService = async (service) => {

@@ -26,6 +26,9 @@ use App\Http\Controllers\PrintoutController;
 use App\Http\Controllers\BindingController;
 use App\Http\Controllers\LaminatingController;
 use App\Http\Controllers\RefillPhotocopyController;
+use App\Http\Controllers\RefillPrintoutController;
+use App\Http\Controllers\BindingRefillController;
+use App\Http\Controllers\RefillLaminatingController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -126,7 +129,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 
-    Route::post('/api/products', [ProductController::class, 'fetchProducts']);
+    Route::post('/api/products', [BindingRefillController::class, 'fetchProducts']);
     Route::post('/api/sale/items', [ReturnItemController::class, 'fetchSaleItems'])->name('sale.items');
 
     Route::get('/services/photocopy', function () {
@@ -156,7 +159,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Refill Photocopy Routes
     Route::get('/refillphotocopy', [RefillPhotocopyController::class, 'index'])->name('refillphotocopy.index');
     Route::post('/refillphotocopy', [RefillPhotocopyController::class, 'store'])->name('refillphotocopy.store');
+    Route::post('/api/refill-printout', [RefillPrintoutController::class, 'store']);
+
+
+    // Add this route for categories
+Route::get('/api/categories', [CategoryController::class, 'index']);
+
+// Add this route for laminating refill
+Route::post('/api/refill-laminating', [LaminatingController::class, 'refillStock']);
+
+    // Add this route to your web.php file
+Route::get('/printout-services', [PrintoutController::class, 'index'])->name('printout-services.index');
     
+    Route::post('/api/refill-binding', [BindingRefillController::class, 'store']);
+    Route::post('/api/refill-binding-by-code', [BindingRefillController::class, 'storeByCode']);
+
+    // Add routes for Refill Laminating
+    Route::get('/refilllaminating', [RefillLaminatingController::class, 'index'])->name('refilllaminating.index');
+    Route::post('/api/refill-laminating', [RefillLaminatingController::class, 'store']);
+    Route::post('/api/refill-laminating-by-code', [RefillLaminatingController::class, 'storeByCode']);
 });
+
+
 
 

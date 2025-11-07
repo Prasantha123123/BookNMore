@@ -11,6 +11,7 @@
             <input v-model="search" type="text" placeholder="Search binding services..." />
           </div>
           <button @click="openCreateForm" class="add-button">Add New Binding Service</button>
+          <button @click="openRefillPopup" class="add-button">Refill</button>
         </div>
 
         <table class="service-table">
@@ -126,6 +127,12 @@
             </div>
           </div>
         </div>
+
+        <!-- BindingRefillPopup Component -->
+        <BindingRefillPopup
+          v-model="isRefillPopupVisible"
+          @refill-submitted="handleRefillSubmitted"
+        />
       </div>
     </div>
   </div>
@@ -134,9 +141,11 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import BindingRefillPopup from './BindingRefillPopup.vue';
 
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
+const isRefillPopupVisible = ref(false);
 const search = ref("");
 const editingService = ref(null);
 
@@ -153,6 +162,16 @@ const closeEditModal = () => {
   isEditModalOpen.value = false;
   editingService.value = null;
   editForm.reset();
+};
+
+const openRefillPopup = () => {
+  isRefillPopupVisible.value = true;
+};
+
+const handleRefillSubmitted = () => {
+  isRefillPopupVisible.value = false;
+  fetchServices(); // Refresh the services list if needed
+  console.log('Binding refill submitted successfully');
 };
 
 // Create form
@@ -478,5 +497,18 @@ const deleteService = (id) => {
 
 .cancel-button:hover {
   background-color: #5a6268;
+}
+
+.refill-button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.refill-button:hover {
+  background-color: #0056b3;
 }
 </style>

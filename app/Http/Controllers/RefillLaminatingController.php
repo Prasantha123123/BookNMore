@@ -3,24 +3,20 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\RefillPhotocopy;
+use App\Models\RefillLaminating;
 use App\Models\Product;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class RefillPhotocopyController extends Controller
+class RefillLaminatingController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return view('refillphotocopy.index', [
-            'refills' => RefillPhotocopy::with('product')->get(),
+        return view('refilllaminating.index', [
+            'refills' => RefillLaminating::with('product')->get(),
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -28,29 +24,24 @@ class RefillPhotocopyController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        // Get the product details
         $product = Product::findOrFail($validated['product_id']);
 
-        // Check if product has enough stock
         if ($product->stock_quantity < $validated['quantity']) {
             return response()->json([
-                'message' => 'Insufficient stock available. Available stock: ' . $product->stock
+                'message' => 'Insufficient stock available. Available stock: ' . $product->stock_quantity
             ], 422);
         }
 
-        // Calculate total stock for the product
-        $totalStock = RefillPhotocopy::where('product_code', $product->code)->sum('stock') + $validated['quantity'];
+        $totalStock = RefillLaminating::where('product_code', $product->code)->sum('total_stock') + $validated['quantity'];
 
-        // Always create a new refill record
-        $refill = RefillPhotocopy::create([
+        $refill = RefillLaminating::create([
             'product_id' => $validated['product_id'],
             'product_code' => $product->code,
             'product_name' => $product->name,
             'quantity' => $validated['quantity'],
-            'stock' => $totalStock,
+            'total_stock' => $totalStock,
         ]);
 
-        // Deduct the refill quantity from the product's available stock
         $product->stock_quantity -= $validated['quantity'];
         $product->save();
 
@@ -60,9 +51,6 @@ class RefillPhotocopyController extends Controller
         ], 201);
     }
 
-    /**
-     * Alternative method using product code instead of product_id
-     */
     public function storeByCode(Request $request)
     {
         $validated = $request->validate([
@@ -70,39 +58,33 @@ class RefillPhotocopyController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        // Get the product by code
         $product = Product::where('code', $validated['product_code'])->firstOrFail();
 
-        // Check if product has enough stock
         if ($product->stock_quantity < $validated['quantity']) {
             return response()->json([
                 'message' => 'Insufficient stock available. Available stock: ' . $product->stock_quantity
             ], 422);
         }
 
-        // Check if refill record already exists for this product
-        $existingRefill = RefillPhotocopy::where('product_code', $validated['product_code'])->first();
+        $existingRefill = RefillLaminating::where('product_code', $validated['product_code'])->first();
 
         if ($existingRefill) {
-            // Update existing refill record
             $existingRefill->update([
                 'quantity' => $existingRefill->quantity + $validated['quantity'],
-                'stock' => $existingRefill->stock + $validated['quantity'],
+                'total_stock' => $existingRefill->total_stock + $validated['quantity'],
             ]);
 
             $refill = $existingRefill;
         } else {
-            // Create new refill record
-            $refill = RefillPhotocopy::create([
+            $refill = RefillLaminating::create([
                 'product_id' => $product->id,
                 'product_code' => $product->code,
                 'product_name' => $product->name,
                 'quantity' => $validated['quantity'],
-                'stock' => $validated['quantity'],
+                'total_stock' => $validated['quantity'],
             ]);
         }
 
-        // Deduct the refill quantity from the product's available stock
         $product->stock_quantity -= $validated['quantity'];
         $product->save();
 
