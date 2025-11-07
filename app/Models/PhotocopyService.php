@@ -50,4 +50,12 @@ class PhotocopyService extends Model
     {
         return $this->price + $this->service_charge;
     }
+
+    /**
+     * Get the raw materials for the photocopy service.
+     */
+    public function rawMaterials()
+    {
+        return $this->hasMany(PhotocopyServiceRawMaterial::class);
+    }
 }

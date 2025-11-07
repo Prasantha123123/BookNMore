@@ -108,6 +108,28 @@
                 <input v-model="createForm.service_charge" type="number" id="service_charge" placeholder="Enter service charge" step="0.01" />
                 <span v-if="createForm.errors.service_charge" class="error">{{ createForm.errors.service_charge }}</span>
               </div>
+
+              <!-- New Category and Product Dropdowns -->
+              <div class="form-group">
+                <label for="category">Category</label>
+                <input v-model="categorySearch" type="text" placeholder="Search categories..." />
+                <select v-model="selectedCategoryId" id="category">
+                  <option v-for="category in categories" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="product">Product</label>
+                <input v-model="productSearch" type="text" placeholder="Search products..." />
+                <select v-model="selectedProductId" id="product">
+                  <option v-for="product in products" :key="product.id" :value="product.id">
+                    {{ product.name }}
+                  </option>
+                </select>
+              </div>
+
               <div class="form-actions">
                 <button @click="submitForm" class="submit-button" :disabled="createForm.processing">
                   {{ createForm.processing ? 'Creating...' : 'Create Service' }}
@@ -203,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import RefillPopup from "./RefillPopup.vue";
 
@@ -252,8 +274,12 @@ const editForm = useForm({
   service_charge: "",
 });
 
+const categories = ref([]);
 const products = ref([]);
+const selectedCategoryId = ref(null);
 const selectedProductId = ref(null);
+const categorySearch = ref("");
+const productSearch = ref("");
 const showError = ref(false);
 const refillForm = ref({
   product_id: null,
@@ -292,6 +318,21 @@ const fetchServices = async () => {
   } catch (error) {
     console.error('Error fetching services:', error);
     services.value = []; // Reset to empty array on error
+  }
+};
+
+// Fetch categories from API
+const fetchCategories = async () => {
+  try {
+    const response = await fetch("/api/categories", {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const data = await response.json();
+    categories.value = data;
+  } catch (error) {
+    console.error("Error fetching categories:", error);
   }
 };
 
@@ -341,8 +382,29 @@ const fetchProducts = async (url = '/api/products') => {
 
 onMounted(() => {
   fetchServices();
+  fetchCategories();
   fetchProducts();
 });
+
+watch(selectedCategoryId, (newCategoryId) => {
+  if (newCategoryId) {
+    fetchProductsByCategory(newCategoryId);
+  }
+});
+
+const fetchProductsByCategory = async (categoryId) => {
+  try {
+    const response = await fetch(`/api/products?category_id=${categoryId}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const data = await response.json();
+    products.value = data;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
 
 const filteredServices = computed(() => {
   if (!Array.isArray(services.value)) {
@@ -359,6 +421,10 @@ const submitForm = () => {
       fetchServices();
       closeCreateModal();
       createForm.reset();
+    },
+    onError: (errors) => {
+      console.error("Validation errors:", errors);
+      createForm.errors = errors;
     },
   });
 };

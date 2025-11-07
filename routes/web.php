@@ -178,6 +178,9 @@ Route::get('/printout-services', [PrintoutController::class, 'index'])->name('pr
     Route::get('/refilllaminating', [RefillLaminatingController::class, 'index'])->name('refilllaminating.index');
     Route::post('/api/refill-laminating', [RefillLaminatingController::class, 'store']);
     Route::post('/api/refill-laminating-by-code', [RefillLaminatingController::class, 'storeByCode']);
+
+    Route::get('/api/categories', [PhotocopyServiceController::class, 'fetchCategories']);
+    Route::get('/api/products', [PhotocopyServiceController::class, 'fetchProducts']);
 });
 
 
