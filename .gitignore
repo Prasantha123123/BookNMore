@@ -5,7 +5,7 @@
 /public/storage
 /storage/*.key
 /vendor
-.env
+/.env
 .env.backup
 .env.production
 .phpunit.result.cache
@@ -21,3 +21,4 @@ deploy.sh
 refresh_seed.sh
 merge-development.sh
 *.sqlite*
+/node_modules
