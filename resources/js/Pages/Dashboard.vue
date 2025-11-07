@@ -28,6 +28,26 @@
         </div>
       </Link>
 
+      <Link href="/sim-reload" v-if="HasRole(['Admin', 'Cashier'])">
+        <div class="dashboard-card bg-[#10b981]">
+          <div class="card-content">
+            <div class="icon-container">
+              <img
+                src="/images/dashboard/cashier.png"
+                class="icon"
+                alt="dresshub.lk"
+              />
+            </div>
+            <div class="text-container">
+              <p class="title">SIM & Reload</p>
+              <p class="description">
+                Manage SIM card sales and mobile reloads with quick processing for customer top-ups and new activations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       <Link href="/categories" v-if="HasRole(['Admin', 'Manager'])">
         <div class="dashboard-card bg-[#003161]">
           <div class="card-content">
@@ -350,8 +370,6 @@
           </div>
         </div>
       </Link>
-
-
 
     </div>
   </div>
