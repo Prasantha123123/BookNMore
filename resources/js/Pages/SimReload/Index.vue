@@ -18,6 +18,106 @@
         </div>
       </div>
 
+      <!-- Service Cards Section -->
+      <div class="w-full flex justify-center">
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4
+                 gap-y-12 gap-x-12 xl:gap-x-16 2xl:gap-x-20
+                 max-w-[96rem] w-full"
+        >
+          <!-- Manage Wallet Card -->
+          <button
+            @click="navigateTo('manage-wallet')"
+            aria-label="Manage Wallet"
+            class="card-base group hover:from-green-50 hover:to-emerald-50"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"></div>
+            <div class="relative flex flex-col items-center justify-center space-y-6">
+              <div class="icon-ring from-green-500 to-emerald-600 group-hover:scale-110">
+                <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
+              <h3 class="text-3xl font-bold text-gray-800 group-hover:text-green-600 transition-colors duration-300 text-center">
+                Manage Wallet
+              </h3>
+              <div class="h-1 w-20 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+            </div>
+          </button>
+
+          <!-- Manage SIM Activation Packages Card -->
+          <button
+            @click="navigateTo('sim-activation-packages')"
+            aria-label="Manage SIM Activation Packages"
+            class="card-base group hover:from-blue-50 hover:to-indigo-50"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"></div>
+            <div class="relative flex flex-col items-center justify-center space-y-6">
+              <div class="icon-ring from-blue-500 to-indigo-600 group-hover:scale-110">
+                <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                </svg>
+              </div>
+              <h3 class="text-3xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors duration-300 text-center">
+                SIM Activation Packages
+              </h3>
+              <div class="h-1 w-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+            </div>
+          </button>
+
+          <!-- Normal Packages Card -->
+          <button
+            @click="navigateTo('normal-packages')"
+            aria-label="Normal Packages"
+            class="card-base group hover:from-purple-50 hover:to-pink-50"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"></div>
+            <div class="relative flex flex-col items-center justify-center space-y-6">
+              <div class="icon-ring from-purple-500 to-pink-600 group-hover:scale-110">
+                <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+              </div>
+              <h3 class="text-3xl font-bold text-gray-800 group-hover:text-purple-600 transition-colors duration-300 text-center">
+                Normal Packages
+              </h3>
+              <div class="h-1 w-20 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+            </div>
+          </button>
+
+          <!-- Manage SIM Card -->
+          <button
+            @click="navigateTo('manage-sim')"
+            aria-label="Manage SIM"
+            class="card-base group hover:from-cyan-50 hover:to-teal-50"
+          >
+            <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-teal-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl"></div>
+            <div class="relative flex flex-col items-center justify-center space-y-6">
+              <div class="icon-ring from-cyan-500 to-teal-600 group-hover:scale-110">
+                <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                </svg>
+              </div>
+              <h3 class="text-3xl font-bold text-gray-800 group-hover:text-cyan-600 transition-colors duration-300 text-center">
+                Manage SIM
+              </h3>
+              <div class="h-1 w-20 bg-gradient-to-r from-cyan-500 to-teal-600 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="flex items-center justify-center my-8">
+        <div class="flex-grow border-t-2 border-gray-300"></div>
+        <span class="px-4 text-2xl font-bold text-gray-600 uppercase">Select Carrier</span>
+        <div class="flex-grow border-t-2 border-gray-300"></div>
+      </div>
+
       <!-- Carrier Selection Grid -->
       <div class="mt-12 w-full flex justify-center">
         <div
@@ -121,6 +221,17 @@ import Header from "@/Components/custom/Header.vue";
 import Footer from "@/Components/custom/Footer.vue";
 import Banner from "@/Components/Banner.vue";
 import { Link, Head, router } from "@inertiajs/vue3";
+
+const navigateTo = (page) => {
+  const routes = {
+    'manage-wallet': '/mobile-topup/manage-wallet',
+    'sim-activation-packages': '/mobile-topup/sim-activation-packages',
+    'normal-packages': '/mobile-topup/normal-packages',
+    'manage-sim': '/sim-stocks'
+  };
+  
+  router.visit(routes[page]);
+};
 
 const selectCarrier = (carrier) => {
   const carrierRoutes = {
