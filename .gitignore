@@ -22,3 +22,4 @@ refresh_seed.sh
 merge-development.sh
 *.sqlite*
 /node_modules
+/node_modules/@rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node
