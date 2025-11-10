@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sim_reloads', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        // This table is deprecated - using reload_sales table instead
+        // Schema::create('sim_reloads', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->timestamps();
+        // });
     }
 
     /**
@@ -22,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sim_reloads');
+        // Schema::dropIfExists('sim_reloads');
     }
 };
