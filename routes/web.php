@@ -30,11 +30,15 @@ use App\Http\Controllers\RefillPrintoutController;
 use App\Http\Controllers\BindingRefillController;
 use App\Http\Controllers\RefillLaminatingController;
 use App\Http\Controllers\SimReloadController;
+use App\Http\Controllers\SimStockController;
+use App\Http\Controllers\MobileTopUpController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\ReloadPackageController;
+use App\Http\Controllers\OperatorController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Gate;
-
 
 /*
 |--------------------------------------------------------------------------
@@ -76,7 +80,11 @@ Route::middleware([
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    
     Route::resource('categories', CategoryController::class);
+        // SIM Stock Management Routes
+    Route::resource('sim-stocks', SimStockController::class);
+    
     Route::resource('products', ProductController::class);
     Route::resource('suppliers', SupplierController::class);
     Route::post('suppliers/{supplier}', [SupplierController::class, 'update']);
@@ -115,13 +123,68 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/save-quotation', [QuotationController::class, 'saveQuotationPdf']);
 
     Route::get('/sim-reload', [SimReloadController::class, 'index'])->name('simreload.index');
+    
+    // Centralized SIM Stock Management - Single Page
+    Route::get('/sim-reload/stock', [SimReloadController::class, 'manageSimStock'])->name('simreload.stock');
+    
     Route::get('/sim-reload/mobitel', [SimReloadController::class, 'mobitel'])->name('simreload.mobitel');
+    Route::get('/sim-reload/mobitel/stock', [SimReloadController::class, 'mobitelStock'])->name('simreload.mobitel.stock');
+    Route::get('/sim-reload/mobitel/packages', [SimReloadController::class, 'mobitelPackages'])->name('simreload.mobitel.packages');
+    Route::get('/sim-reload/mobitel/activation-packages', [SimReloadController::class, 'mobitelActivationPackages'])->name('simreload.mobitel.activation');
+    Route::get('/sim-reload/mobitel/wallet', [SimReloadController::class, 'mobitelWallet'])->name('simreload.mobitel.wallet');
+    
     Route::get('/sim-reload/dialog', [SimReloadController::class, 'dialog'])->name('simreload.dialog');
+    Route::get('/sim-reload/dialog/stock', [SimReloadController::class, 'dialogStock'])->name('simreload.dialog.stock');
+    Route::get('/sim-reload/dialog/packages', [SimReloadController::class, 'dialogPackages'])->name('simreload.dialog.packages');
+    Route::get('/sim-reload/dialog/activation-packages', [SimReloadController::class, 'dialogActivationPackages'])->name('simreload.dialog.activation');
+    Route::get('/sim-reload/dialog/wallet', [SimReloadController::class, 'dialogWallet'])->name('simreload.dialog.wallet');
+    
     Route::get('/sim-reload/airtel', [SimReloadController::class, 'airtel'])->name('simreload.airtel');
+    Route::get('/sim-reload/airtel/stock', [SimReloadController::class, 'airtelStock'])->name('simreload.airtel.stock');
+    Route::get('/sim-reload/airtel/packages', [SimReloadController::class, 'airtelPackages'])->name('simreload.airtel.packages');
+    Route::get('/sim-reload/airtel/activation-packages', [SimReloadController::class, 'airtelActivationPackages'])->name('simreload.airtel.activation');
+    Route::get('/sim-reload/airtel/wallet', [SimReloadController::class, 'airtelWallet'])->name('simreload.airtel.wallet');
+    
     Route::get('/sim-reload/hutch', [SimReloadController::class, 'hutch'])->name('simreload.hutch');
-
- Route::get('/add_promotion', [ProductController::class, 'addPromotion']);
-    Route::post('/submit_promotion', [ProductController::class, 'submitPromotion']);
+    Route::get('/sim-reload/hutch/stock', [SimReloadController::class, 'hutchStock'])->name('simreload.hutch.stock');
+    Route::get('/sim-reload/hutch/packages', [SimReloadController::class, 'hutchPackages'])->name('simreload.hutch.packages');
+    Route::get('/sim-reload/hutch/activation-packages', [SimReloadController::class, 'hutchActivationPackages'])->name('simreload.hutch.activation');
+    Route::get('/sim-reload/hutch/wallet', [SimReloadController::class, 'hutchWallet'])->name('simreload.hutch.wallet');
+    
+    // Mobile Top-Up Routes
+    Route::get('/mobile-topup', [MobileTopUpController::class, 'index'])->name('mobile-topup.index');
+    Route::get('/mobile-topup/manage-wallet', [MobileTopUpController::class, 'manageWallet'])->name('mobile-topup.manage-wallet');
+    Route::get('/mobile-topup/sim-activation-packages', [MobileTopUpController::class, 'simActivationPackages'])->name('mobile-topup.sim-activation-packages');
+    Route::get('/mobile-topup/normal-packages', [MobileTopUpController::class, 'normalPackages'])->name('mobile-topup.normal-packages');
+    
+    // Operator Management Routes
+    Route::prefix('operators')->group(function () {
+        Route::post('/', [OperatorController::class, 'store']);
+        Route::put('/{id}', [OperatorController::class, 'update']);
+        Route::delete('/{id}', [OperatorController::class, 'destroy']);
+    });
+    
+    // Wallet API Routes
+    Route::prefix('api/wallet')->group(function () {
+        Route::get('/', [WalletController::class, 'index']);
+        Route::post('/deposit', [WalletController::class, 'deposit']);
+        Route::post('/sell', [WalletController::class, 'sell']);
+        Route::post('/quote', [WalletController::class, 'quote']);
+        Route::get('/transactions', [WalletController::class, 'transactions']);
+        Route::get('/packages', [WalletController::class, 'getPackages']);
+    });
+    
+    // Reload Packages API Routes
+    Route::prefix('api/reload-packages')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ReloadPackageController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\ReloadPackageController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\ReloadPackageController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\ReloadPackageController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\ReloadPackageController::class, 'destroy']);
+        Route::get('/operator/{operatorId}', [\App\Http\Controllers\ReloadPackageController::class, 'byOperator']);
+    });
+    
+    
     Route::get('/products/{id}/promotion-items', [ProductController::class, 'getPromotionItems']);
 
 
@@ -184,8 +247,24 @@ Route::get('/printout-services', [PrintoutController::class, 'index'])->name('pr
     Route::post('/api/refill-laminating', [RefillLaminatingController::class, 'store']);
     Route::post('/api/refill-laminating-by-code', [RefillLaminatingController::class, 'storeByCode']);
 
-    Route::get('/api/categories', [PhotocopyServiceController::class, 'fetchCategories']);
-    Route::get('/api/products', [PhotocopyServiceController::class, 'fetchProducts']);
+    // Wallet Routes
+    Route::prefix('wallet')->group(function () {
+        Route::get('accounts', [WalletController::class, 'getAccounts'])->name('wallet.accounts');
+        Route::post('deposit', [WalletController::class, 'deposit'])->name('wallet.deposit');
+        Route::post('sell', [WalletController::class, 'sell'])->name('wallet.sell');
+        Route::post('quote', [WalletController::class, 'quote'])->name('wallet.quote');
+        Route::get('transactions', [WalletController::class, 'transactions'])->name('wallet.transactions');
+        Route::post('transactions/export-pdf', [WalletController::class, 'exportTransactionsPDF'])->name('wallet.transactions.export-pdf');
+        Route::get('operators', [WalletController::class, 'getOperators'])->name('wallet.operators');
+        Route::get('packages', [WalletController::class, 'getPackages'])->name('wallet.packages');
+    });
+    
+    // Reload Packages CRUD
+    Route::resource('reload-packages', ReloadPackageController::class);
+    
+    // Operator Management
+    Route::resource('operators', OperatorController::class);
+    Route::patch('operators/{operator}/toggle-status', [OperatorController::class, 'toggleStatus'])->name('operators.toggle-status');
 });
 
 
