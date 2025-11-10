@@ -5,11 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class SimReload extends Model
+class ReloadSale extends Model
 {
     use HasFactory;
-
-    protected $table = 'reload_sales';
 
     protected $fillable = [
         'user_id',
@@ -24,7 +22,7 @@ class SimReload extends Model
         'net_cost',
         'wallet_balance_before',
         'wallet_balance_after',
-        'status',
+        'status', // 'pending', 'completed', 'failed', 'refunded'
         'transaction_reference',
         'sale_id',
         'notes',
@@ -42,15 +40,7 @@ class SimReload extends Model
     ];
 
     /**
-     * Get the operator
-     */
-    public function operator()
-    {
-        return $this->belongsTo(Operator::class);
-    }
-
-    /**
-     * Get the user who made the sale
+     * Get the user (seller)
      */
     public function user()
     {
@@ -58,7 +48,7 @@ class SimReload extends Model
     }
 
     /**
-     * Get the employee who made the sale
+     * Get the employee (seller)
      */
     public function employee()
     {
@@ -74,7 +64,15 @@ class SimReload extends Model
     }
 
     /**
-     * Get the reload package
+     * Get the operator
+     */
+    public function operator()
+    {
+        return $this->belongsTo(Operator::class);
+    }
+
+    /**
+     * Get the reload package if applicable
      */
     public function reloadPackage()
     {
@@ -130,9 +128,9 @@ class SimReload extends Model
     }
 
     /**
-     * Scope by operator
+     * Scope for operator
      */
-    public function scopeByOperator($query, $operatorId)
+    public function scopeForOperator($query, $operatorId)
     {
         return $query->where('operator_id', $operatorId);
     }
@@ -145,4 +143,3 @@ class SimReload extends Model
         return preg_replace('/(\d{3})(\d{3})(\d{4})/', '$1-$2-$3', $this->msisdn);
     }
 }
-
