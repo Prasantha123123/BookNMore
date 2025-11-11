@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Newspaper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+use App\Models\ReturnItem;
 
 class NewspaperController extends Controller
 {
@@ -143,5 +145,35 @@ class NewspaperController extends Controller
         $newspaper->delete();
 
         return redirect()->route('newspapers.index')->with('success', 'Newspaper deleted successfully.');
+    }
+
+    /**
+     * Process the return of a newspaper
+     */
+    public function return(Request $request)
+    {
+
+       
+        $validated = $request->validate([
+            'newspaper_id' => 'required|exists:newspapers,id',
+            'quantity' => 'required|integer|min:1',
+            'reason' => 'required|string',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            // Create return record
+            ReturnItem::create([
+                'newspaper_id' => $validated['newspaper_id'],
+                'quantity' => $validated['quantity'],
+                'reason' => $validated['reason'],
+                'return_date' => now(),
+            ]);
+
+            // Update newspaper stock
+            $newspaper = Newspaper::find($validated['newspaper_id']);
+            $newspaper->increment('return', $validated['quantity']);
+        });
+
+        return back()->with('success', 'Newspaper return processed successfully');
     }
 }
