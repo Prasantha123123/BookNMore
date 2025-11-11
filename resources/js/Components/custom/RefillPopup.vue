@@ -56,9 +56,9 @@
   <div v-if="isRefillModalOpen" class="modal-overlay">
     <div class="pos-modal-content">
       <div class="modal-header">
-        <h2>Select Product</h2>
-        <div class="search-bar">
-          <input v-model="search" type="text" placeholder="Search products..." @input="fetchProducts" />
+        <h2>{{ selectedProductId ? 'Refill Stock' : 'Select Product' }}</h2>
+        <div v-if="!selectedProductId" class="search-bar">
+          <input v-model="search" type="text" placeholder="Search products..." @input="fetchProducts(1)" />
         </div>
         <button @click="$emit('close')" class="close-button" title="Close">×</button>
       </div>
@@ -69,7 +69,7 @@
             <div class="filter-options">
               <select
                 v-model="selectedCategory"
-                @change="fetchProducts"
+                @change="fetchProducts(1)"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Category</option>
@@ -88,7 +88,7 @@
 
               <select
                 v-model="stockStatus"
-                @change="fetchProducts"
+                @change="fetchProducts(1)"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Stock</option>
@@ -98,7 +98,7 @@
 
               <select
                 v-model="sort"
-                @change="fetchProducts"
+                @change="fetchProducts(1)"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Price</option>
@@ -108,7 +108,7 @@
 
               <select
                 v-model="color"
-                @change="fetchProducts"
+                @change="fetchProducts(1)"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Color</option>
@@ -123,7 +123,7 @@
 
               <select
                 v-model="size"
-                @change="fetchProducts"
+                @change="fetchProducts(1)"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Size</option>
@@ -138,13 +138,19 @@
 
               <span
                 @click="resetFilters"
-                class="px-6 py-3 text-xl font-normal tracking-wider text-white text-center bg-blue-600 rounded-lg custom-select"
+                class="px-6 py-3 text-xl font-normal tracking-wider text-white text-center bg-blue-600 rounded-lg cursor-pointer custom-select"
               >
                 Reset
               </span>
             </div>
 
-            <div class="horizontal-product-scroll">
+            <!-- Loading State -->
+            <div v-if="loading" class="loading-state">
+              <p>Loading products...</p>
+            </div>
+
+            <!-- Products Grid -->
+            <div v-else-if="products.length > 0" class="horizontal-product-scroll">
               <div class="product-grid">
                 <label 
                   v-for="product in products" 
@@ -163,6 +169,7 @@
                     <div class="product-info">
                       <div class="info-line">Price: {{ product.selling_price }}.00 LKR</div>
                       <div class="info-line">Stock: {{ product.stock_quantity }}</div>
+                      <div class="info-line">code: {{ product.code}}</div>
                       <div class="info-line barcode">Barcode: {{ product.barcode }}</div>
                     </div>
                     <div class="select-circle">
@@ -172,10 +179,16 @@
                 </label>
               </div>
             </div>
-            <div class="pos-pagination">
+
+            <!-- No Products -->
+            <div v-else class="no-products">
+              <p>No products found</p>
+            </div>
+
+            <div v-if="products.length > 0" class="pos-pagination">
               <button 
                 class="pagination-button" 
-                @click="fetchProducts(pagination.prev_page_url)" 
+                @click="changePage(pagination.current_page - 1)" 
                 :disabled="!pagination.prev_page_url"
               >
                 Previous
@@ -185,7 +198,7 @@
               </span>
               <button 
                 class="pagination-button" 
-                @click="fetchProducts(pagination.next_page_url)" 
+                @click="changePage(pagination.current_page + 1)" 
                 :disabled="!pagination.next_page_url"
               >
                 Next
@@ -225,6 +238,7 @@
                 id="stock" 
                 placeholder="Enter stock quantity" 
                 class="form-input"
+                min="1"
               />
             </div>
             
@@ -267,13 +281,19 @@ const quantity = ref('');
 const search = ref("");
 const products = ref([]);
 const selectedProductId = ref(null);
-const pagination = ref({});
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  prev_page_url: null,
+  next_page_url: null,
+});
 const stockQuantity = ref(null);
 const selectedCategory = ref("");
 const stockStatus = ref("");
 const sort = ref("");
 const color = ref("");
 const size = ref("");
+const loading = ref(false);
 
 const allcategories = ref([]);
 const colors = ref([]);
@@ -322,10 +342,17 @@ const submitRefill = () => {
   resetForm();
 };
 
-const fetchProducts = async (url = "/api/products") => {
+const changePage = (page) => {
+  if (page >= 1 && page <= pagination.value.last_page) {
+    fetchProducts(page);
+  }
+};
+
+const fetchProducts = async (page = 1) => {
+  loading.value = true;
   try {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const response = await fetch(typeof url === "string" ? url : "/api/products", {
+    const response = await fetch(`/api/products?page=${page}`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -333,7 +360,8 @@ const fetchProducts = async (url = "/api/products") => {
         "X-CSRF-TOKEN": token,
       },
       body: JSON.stringify({
-        search: search.value.trim(), // Ensure search input is trimmed
+        page: page,
+        search: search.value.trim(),
         category: selectedCategory.value,
         stock: stockStatus.value,
         sort: sort.value,
@@ -350,15 +378,22 @@ const fetchProducts = async (url = "/api/products") => {
     if (data && data.products) {
       products.value = data.products.data || [];
       pagination.value = {
-        current_page: data.products.current_page,
-        last_page: data.products.last_page,
+        current_page: data.products.current_page || 1,
+        last_page: data.products.last_page || 1,
         prev_page_url: data.products.prev_page_url,
         next_page_url: data.products.next_page_url,
       };
+
+      // Load filter options on first load
+      if (data.categories) allcategories.value = data.categories;
+      if (data.colors) colors.value = data.colors;
+      if (data.sizes) sizes.value = data.sizes;
     }
   } catch (error) {
     console.error("Error fetching products:", error);
     alert("Failed to load products. Please try refreshing the page.");
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -394,6 +429,8 @@ const submitStock = async () => {
       selectedProductId.value = null;
       stockQuantity.value = null;
       alert("Stock added successfully!");
+      // Close the modal after successful submission
+      emit('close');
     } else {
       const errorData = await response.json();
       console.error("Error:", errorData);
@@ -412,7 +449,8 @@ const resetFilters = () => {
   sort.value = "";
   color.value = "";
   size.value = "";
-  fetchProducts();
+  search.value = "";
+  fetchProducts(1);
 };
 
 // Reset form when modal is closed
@@ -426,7 +464,7 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   if (newVal) {
     selectedProductId.value = null;
     stockQuantity.value = null;
-    fetchProducts();
+    fetchProducts(1);
   }
 });
 </script>
@@ -610,6 +648,13 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   min-width: 150px;
 }
 
+.loading-state, .no-products {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+  font-size: 16px;
+}
+
 .horizontal-product-scroll {
   overflow-x: auto;
   padding: 15px;
@@ -708,10 +753,10 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
+  padding: 15px 20px;
   background-color: #f5f5f5;
   border-radius: 4px;
-
+  margin: 0 20px;
 }
 
 .pagination-button {
@@ -736,6 +781,13 @@ watch(() => props.isRefillModalOpen, (newVal) => {
 .pagination-info {
   font-size: 14px;
   color: #666;
+}
+
+.search-bar input {
+  width: 300px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 
 .refill-form-section {

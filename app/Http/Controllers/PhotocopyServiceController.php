@@ -32,66 +32,104 @@ class PhotocopyServiceController extends Controller
     /**
      * Store a newly created photocopy service in storage.
      */
-    public function store(Request $request)
-    {
+    /**
+ * Store a newly created photocopy service in storage.
+ */
+public function store(Request $request)
+{
+    try {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'size' => 'required|string|max:255',
+            'side' => 'required|string|max:255',
+            'pages' => 'required|string|max:255',
+            'color' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'service_charge' => 'required|numeric|min:0',
+            'products' => 'required|array|min:1',
+            'products.*' => 'required|exists:products,id',
+        ]);
+
+        // Use database transaction to ensure data integrity
+        \DB::beginTransaction();
+        
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'size' => 'required|string|max:255',
-                'side' => 'required|string|max:255',
-                'pages' => 'required|string|max:255',
-                'color' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0',
-                'service_charge' => 'required|numeric|min:0',
-                'products' => 'required|array',
-                'products.*.id' => 'required|exists:products,id',
-                'products.*.quantity' => 'required|integer|min:1',
+            // Create the photocopy service
+            $photocopyService = PhotocopyService::create([
+                'name' => $validated['name'],
+                'size' => $validated['size'],
+                'side' => $validated['side'],
+                'pages' => $validated['pages'],
+                'color' => $validated['color'],
+                'price' => $validated['price'],
+                'service_charge' => $validated['service_charge'],
+                'service_id' => 1,
             ]);
 
-            $validated['service_id'] = 1;
+            \Log::info('Photocopy service created', ['service_id' => $photocopyService->id]);
 
-            $photocopyService = PhotocopyService::create($validated);
-
-            foreach ($validated['products'] as $product) {
-                $photocopyService->rawMaterials()->create([
-                    'product_id' => $product['id'],
-                    'quantity' => $product['quantity'],
+            // Store selected products in raw materials table
+            foreach ($validated['products'] as $productId) {
+                $rawMaterial = \App\Models\PhotocopyServiceRawMaterial::create([
+                    'photocopy_service_id' => $photocopyService->id,
+                    'product_id' => $productId,
+                ]);
+                
+                \Log::info('Raw material created', [
+                    'raw_material_id' => $rawMaterial->id,
+                    'service_id' => $photocopyService->id,
+                    'product_id' => $productId
                 ]);
             }
 
+            \DB::commit();
+
             if ($request->expectsJson() || $request->wantsJson()) {
                 return response()->json([
+                    'success' => true,
                     'message' => 'Photocopy service created successfully',
-                    'photocopyService' => $photocopyService
+                    'photocopyService' => $photocopyService->load('rawMaterials.product')
                 ], 201);
             }
 
-            return redirect()->route('photocopy.services.index')->with('success', 'Photocopy service created successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->expectsJson() || $request->wantsJson()) {
-                return response()->json([
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-
-            return redirect()->back()->withErrors($e->errors())->withInput();
+            return redirect('/services/photocopy')->with('success', 'Photocopy service created successfully.');
+            
         } catch (\Exception $e) {
-            \Log::error('Error creating photocopy service', [
-                'error' => $e->getMessage(),
-                'request' => $request->all()
-            ]);
-
-            if ($request->expectsJson() || $request->wantsJson()) {
-                return response()->json([
-                    'message' => 'An error occurred while creating the photocopy service',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-
-            return redirect()->back()->with('error', 'An error occurred while creating the photocopy service.');
+            \DB::rollBack();
+            throw $e;
         }
+        
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        \Log::error('Validation error', ['errors' => $e->errors()]);
+        
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
+
+        return redirect()->back()->withErrors($e->errors())->withInput();
+        
+    } catch (\Exception $e) {
+        \Log::error('Error creating photocopy service', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while creating the photocopy service',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+
+        return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
     }
+}
 
     /**
      * Display the specified photocopy service.
@@ -144,8 +182,24 @@ class PhotocopyServiceController extends Controller
      */
     public function fetchCategories()
     {
-        $categories = Category::all();
-        return response()->json($categories);
+        $categories = Category::with('parent')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'parent' => $category->parent ? [
+                        'id' => $category->parent->id,
+                        'name' => $category->parent->name,
+                    ] : null,
+                    'hierarchy_string' => $category->hierarchy_string,
+                ];
+            });
+
+        return response()->json([
+            'categories' => $categories
+        ]);
     }
 
     /**
@@ -154,7 +208,15 @@ class PhotocopyServiceController extends Controller
     public function fetchProducts(Request $request)
     {
         $categoryId = $request->query('category_id');
-        $products = Product::where('category_id', $categoryId)->get();
+        
+        if (!$categoryId) {
+            return response()->json([]);
+        }
+        
+        $products = Product::where('category_id', $categoryId)
+                          ->select('id', 'name', 'code', 'category_id', 'stock_quantity', 'selling_price')
+                          ->get();
+                          
         return response()->json($products);
     }
 }

@@ -13,10 +13,10 @@ class ServicesSeeder extends Seeder
     public function run(): void
     {
         DB::table('services')->insert([
-            ['name' => 'Photocopy'],
-            ['name' => 'Printout'],
-            ['name' => 'Binding'],
-            ['name' => 'Laminating'],
+            ['id' => 1, 'name' => 'Photocopy'],
+            ['id' => 2, 'name' => 'Printout'],
+            ['id' => 3, 'name' => 'Laminating'],
+            ['id' => 4, 'name' => 'Binding'],
         ]);
     }
 }

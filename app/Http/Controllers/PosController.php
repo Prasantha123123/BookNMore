@@ -15,6 +15,17 @@ use App\Models\Employee;
 use App\Models\Newspaper;
 use App\Models\PhotocopyService;
 use App\Models\RefillPhotocopy;
+use App\Models\PhotocopyServiceRawMaterial;
+use App\Models\PrintoutService;
+use App\Models\RefillPrintout;
+use App\Models\PrintoutServiceRawMaterial;
+use App\Models\LaminatingService;
+use App\Models\RefillLaminating;
+use App\Models\LaminatingServiceRawMaterial;
+use App\Models\BindingService;
+use App\Models\RefillBinding;
+use App\Models\BindingRefill;
+use App\Models\BindingServiceRawMaterial;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +103,40 @@ class PosController extends Controller
                     'image' => null,
                 ],
                 'type' => 'newspaper',
+                'error' => null,
+            ]);
+        }
+
+        // If not found in newspapers, try photocopy services
+        $photocopyService = PhotocopyService::where('name', 'LIKE', '%' . $request->barcode . '%')
+            ->with('rawMaterials.product')
+            ->first();
+
+        if ($photocopyService) {
+            $availableStock = $this->calculatePhotocopyServiceStock($photocopyService);
+            
+            // Format photocopy service to match product structure
+            return response()->json([
+                'product' => [
+                    'id' => $photocopyService->id,
+                    'name' => $photocopyService->name,
+                    'barcode' => null, // Photocopy services don't have barcodes
+                    'selling_price' => $photocopyService->totalprice,
+                    'cost_price' => $photocopyService->price,
+                    'stock_quantity' => $availableStock,
+                    'discount' => 0,
+                    'discounted_price' => $photocopyService->totalprice,
+                    'is_photocopy' => true,
+                    'service_details' => [
+                        'size' => $photocopyService->size,
+                        'side' => $photocopyService->side,
+                        'pages' => $photocopyService->pages,
+                        'color' => $photocopyService->color,
+                        'service_charge' => $photocopyService->service_charge,
+                    ],
+                    'image' => null,
+                ],
+                'type' => 'photocopy_service',
                 'error' => null,
             ]);
         }
@@ -204,6 +249,9 @@ class PosController extends Controller
             foreach ($products as $item) {
                 $isNewspaper = isset($item['is_newspaper']) && $item['is_newspaper'] === true;
                 $isPhotocopy = isset($item['is_photocopy']) && $item['is_photocopy'] === true;
+                $isPrintout = isset($item['is_printout']) && $item['is_printout'] === true;
+                $isLaminating = isset($item['is_laminating']) && $item['is_laminating'] === true;
+                $isBinding = isset($item['is_binding']) && $item['is_binding'] === true;
 
                 if ($isNewspaper) {
                     // Handle newspaper
@@ -249,8 +297,7 @@ class PosController extends Controller
                     ]);
                 } elseif ($isPhotocopy) {
                     // Handle photocopy service
-                    $photocopyModel = PhotocopyService::find($item['id']);
-                    $refillStock = RefillPhotocopy::where('product_id', $item['id'])->sum('stock');
+                    $photocopyModel = PhotocopyService::with('rawMaterials.product')->find($item['id']);
 
                     if (!$photocopyModel) {
                         DB::rollBack();
@@ -259,35 +306,85 @@ class PosController extends Controller
                         ], 404);
                     }
 
-                    if ($refillStock < $item['quantity']) {
-                        DB::rollBack();
-                        return response()->json([
-                            'message' => "Insufficient stock for photocopy service: {$photocopyModel->name} ({$refillStock} available)"
-                        ], 423);
-                    }
+                    // Check if service has raw materials defined
+                    if ($photocopyModel->rawMaterials->count() > 0) {
+                        // Check stock availability for each raw material
+                        foreach ($photocopyModel->rawMaterials as $rawMaterial) {
+                            $availableStock = RefillPhotocopy::where('product_id', $rawMaterial->product_id)->sum('stock');
+                            
+                            if ($availableStock < $item['quantity']) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'message' => "Insufficient stock for raw material '{$rawMaterial->product->name}' required for {$photocopyModel->name}. Available: {$availableStock}, Required: {$item['quantity']}"
+                                ], 423);
+                            }
+                        }
 
-                    // Deduct stock from refill
-                    $remainingQuantity = $item['quantity'];
-                    $refills = RefillPhotocopy::where('product_id', $item['id'])->orderBy('id')->get();
+                        // Deduct stock from raw materials
+                        foreach ($photocopyModel->rawMaterials as $rawMaterial) {
+                            $remainingQuantity = $item['quantity'];
+                            $refills = RefillPhotocopy::where('product_id', $rawMaterial->product_id)
+                                ->where('stock', '>', 0)
+                                ->orderBy('id')
+                                ->get();
 
-                    foreach ($refills as $refill) {
-                        if ($remainingQuantity <= 0) break;
+                            foreach ($refills as $refill) {
+                                if ($remainingQuantity <= 0) break;
 
-                        if ($refill->stock >= $remainingQuantity) {
-                            $refill->stock -= $remainingQuantity;
-                            $refill->save();
-                            $remainingQuantity = 0;
-                        } else {
-                            $remainingQuantity -= $refill->stock;
-                            $refill->stock = 0;
-                            $refill->save();
+                                if ($refill->stock >= $remainingQuantity) {
+                                    $refill->stock -= $remainingQuantity;
+                                    $refill->save();
+                                    $remainingQuantity = 0;
+                                } else {
+                                    $remainingQuantity -= $refill->stock;
+                                    $refill->stock = 0;
+                                    $refill->save();
+                                }
+                            }
+
+                            // Create stock transaction for raw material deduction
+                            StockTransaction::create([
+                                'product_id' => $rawMaterial->product_id,
+                                'transaction_type' => 'Deducted',
+                                'quantity' => $item['quantity'],
+                                'transaction_date' => now(),
+                                'notes' => "Used for photocopy service: {$photocopyModel->name}",
+                            ]);
+                        }
+                    } else {
+                        // If no raw materials defined, check refill stock directly (backward compatibility)
+                        $refillStock = RefillPhotocopy::where('product_id', $item['id'])->sum('stock');
+
+                        if ($refillStock < $item['quantity']) {
+                            DB::rollBack();
+                            return response()->json([
+                                'message' => "Insufficient stock for photocopy service: {$photocopyModel->name} ({$refillStock} available)"
+                            ], 423);
+                        }
+
+                        // Deduct stock from refill
+                        $remainingQuantity = $item['quantity'];
+                        $refills = RefillPhotocopy::where('product_id', $item['id'])->orderBy('id')->get();
+
+                        foreach ($refills as $refill) {
+                            if ($remainingQuantity <= 0) break;
+
+                            if ($refill->stock >= $remainingQuantity) {
+                                $refill->stock -= $remainingQuantity;
+                                $refill->save();
+                                $remainingQuantity = 0;
+                            } else {
+                                $remainingQuantity -= $refill->stock;
+                                $refill->stock = 0;
+                                $refill->save();
+                            }
                         }
                     }
 
                     // Create sale item for photocopy service
                     SaleItem::create([
                         'sale_id' => $sale->id,
-                        'photocopy_id' => $item['id'], // Added photocopy_id
+                        'photocopy_id' => $item['id'],
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['selling_price'],
                         'total_price' => $item['quantity'] * $item['selling_price'],
@@ -298,7 +395,261 @@ class PosController extends Controller
                         'photocopy_service_id' => $item['id'],
                         'transaction_type' => 'Sold',
                         'quantity' => $item['quantity'],
-                        'transaction_date' => now(),
+                        'transaction_date' => now()->toDateString(),
+                    ]);
+                } elseif ($isPrintout) {
+                    // Handle printout service
+                    $printoutModel = PrintoutService::with('rawMaterials.product')->find($item['id']);
+
+                    if (!$printoutModel) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => "Printout service not found: {$item['name']}"
+                        ], 404);
+                    }
+
+                    // Check if service has raw materials defined
+                    if ($printoutModel->rawMaterials->count() > 0) {
+                        // Check stock availability for each raw material
+                        foreach ($printoutModel->rawMaterials as $rawMaterial) {
+                            $availableStock = RefillPrintout::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+                            
+                            if ($availableStock < $item['quantity']) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'message' => "Insufficient stock for raw material '{$rawMaterial->product->name}' required for {$printoutModel->name}. Available: {$availableStock}, Required: {$item['quantity']}"
+                                ], 423);
+                            }
+                        }
+
+                        // Deduct stock from raw materials
+                        foreach ($printoutModel->rawMaterials as $rawMaterial) {
+                            $remainingQuantity = $item['quantity'];
+                            $refills = RefillPrintout::where('product_id', $rawMaterial->product_id)
+                                ->where('total_stock', '>', 0)
+                                ->orderBy('id')
+                                ->get();
+
+                            foreach ($refills as $refill) {
+                                if ($remainingQuantity <= 0) break;
+
+                                if ($refill->total_stock >= $remainingQuantity) {
+                                    $refill->total_stock -= $remainingQuantity;
+                                    $refill->save();
+                                    $remainingQuantity = 0;
+                                } else {
+                                    $remainingQuantity -= $refill->total_stock;
+                                    $refill->total_stock = 0;
+                                    $refill->save();
+                                }
+                            }
+
+                            // Create stock transaction for raw material deduction
+                            StockTransaction::create([
+                                'product_id' => $rawMaterial->product_id,
+                                'transaction_type' => 'Deducted',
+                                'quantity' => $item['quantity'],
+                                'transaction_date' => now(),
+                                'notes' => "Used for printout service: {$printoutModel->name}",
+                            ]);
+                        }
+                    }
+
+                    // Create sale item for printout service
+                    SaleItem::create([
+                        'sale_id' => $sale->id,
+                        'printout_id' => $item['id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['selling_price'],
+                        'total_price' => $item['quantity'] * $item['selling_price'],
+                    ]);
+
+                    // Create stock transaction for printout service
+                    StockTransaction::create([
+                        'printout_service_id' => $item['id'],
+                        'transaction_type' => 'Sold',
+                        'quantity' => $item['quantity'],
+                        'transaction_date' => now()->toDateString(),
+                    ]);
+                } elseif ($isLaminating) {
+                    // Handle laminating service
+                    $laminatingModel = LaminatingService::with('rawMaterials.product')->find($item['id']);
+
+                    if (!$laminatingModel) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => "Laminating service not found: {$item['name']}"
+                        ], 404);
+                    }
+
+                    // Check if service has raw materials defined
+                    if ($laminatingModel->rawMaterials->count() > 0) {
+                        // Check stock availability for each raw material
+                        foreach ($laminatingModel->rawMaterials as $rawMaterial) {
+                            // Try to get stock by product_id first, then by product_code if needed
+                            $availableStock = RefillLaminating::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+                            
+                            // If no stock found by product_id, try by product_code
+                            if ($availableStock == 0 && $rawMaterial->product) {
+                                $availableStock = RefillLaminating::where('product_code', $rawMaterial->product->code)->sum('total_stock');
+                            }
+                            
+                            if ($availableStock < $item['quantity']) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'message' => "Insufficient stock for raw material '{$rawMaterial->product->name}' required for {$laminatingModel->name}. Available: {$availableStock}, Required: {$item['quantity']}"
+                                ], 423);
+                            }
+                        }
+
+                        // Deduct stock from raw materials
+                        foreach ($laminatingModel->rawMaterials as $rawMaterial) {
+                            $remainingQuantity = $item['quantity'];
+                            
+                            // Try to get refills by product_id first, then by product_code if needed
+                            $refills = RefillLaminating::where('product_id', $rawMaterial->product_id)
+                                ->where('total_stock', '>', 0)
+                                ->orderBy('id')
+                                ->get();
+                                
+                            // If no refills found by product_id, try by product_code
+                            if ($refills->isEmpty() && $rawMaterial->product) {
+                                $refills = RefillLaminating::where('product_code', $rawMaterial->product->code)
+                                    ->where('total_stock', '>', 0)
+                                    ->orderBy('id')
+                                    ->get();
+                            }
+
+                            foreach ($refills as $refill) {
+                                if ($remainingQuantity <= 0) break;
+
+                                if ($refill->total_stock >= $remainingQuantity) {
+                                    $refill->total_stock -= $remainingQuantity;
+                                    $refill->save();
+                                    $remainingQuantity = 0;
+                                } else {
+                                    $remainingQuantity -= $refill->total_stock;
+                                    $refill->total_stock = 0;
+                                    $refill->save();
+                                }
+                            }
+
+                            // Create stock transaction for raw material deduction
+                            StockTransaction::create([
+                                'product_id' => $rawMaterial->product_id,
+                                'transaction_type' => 'Deducted',
+                                'quantity' => $item['quantity'],
+                                'transaction_date' => now(),
+                                'notes' => "Used for laminating service: {$laminatingModel->name}",
+                            ]);
+                        }
+                    }
+
+                    // Create sale item for laminating service
+                    SaleItem::create([
+                        'sale_id' => $sale->id,
+                        'laminating_id' => $item['id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['selling_price'],
+                        'total_price' => $item['quantity'] * $item['selling_price'],
+                    ]);
+
+                    // Create stock transaction for laminating service
+                    StockTransaction::create([
+                        'laminating_service_id' => $item['id'],
+                        'transaction_type' => 'Sold',
+                        'quantity' => $item['quantity'],
+                        'transaction_date' => now()->toDateString(),
+                    ]);
+                } elseif ($isBinding) {
+                    // Handle binding service
+                    $bindingModel = BindingService::with('rawMaterials.product')->find($item['id']);
+
+                    if (!$bindingModel) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => "Binding service not found: {$item['name']}"
+                        ], 404);
+                    }
+
+                    // Check if service has raw materials defined
+                    if ($bindingModel->rawMaterials->count() > 0) {
+                        // Check stock availability for each raw material
+                        foreach ($bindingModel->rawMaterials as $rawMaterial) {
+                            // Try to get stock by product_id first, then by product_code if needed
+                            $availableStock = BindingRefill::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+                            
+                            // If no stock found by product_id, try by product_code
+                            if ($availableStock == 0 && $rawMaterial->product) {
+                                $availableStock = BindingRefill::where('product_code', $rawMaterial->product->code)->sum('total_stock');
+                            }
+                            
+                            if ($availableStock < $item['quantity']) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'message' => "Insufficient stock for raw material '{$rawMaterial->product->name}' required for {$bindingModel->name}. Available: {$availableStock}, Required: {$item['quantity']}"
+                                ], 423);
+                            }
+                        }
+
+                        // Deduct stock from raw materials
+                        foreach ($bindingModel->rawMaterials as $rawMaterial) {
+                            $remainingQuantity = $item['quantity'];
+                            
+                            // Try to get refills by product_id first, then by product_code if needed
+                            $refills = BindingRefill::where('product_id', $rawMaterial->product_id)
+                                ->where('total_stock', '>', 0)
+                                ->orderBy('id')
+                                ->get();
+                                
+                            // If no refills found by product_id, try by product_code
+                            if ($refills->isEmpty() && $rawMaterial->product) {
+                                $refills = BindingRefill::where('product_code', $rawMaterial->product->code)
+                                    ->where('total_stock', '>', 0)
+                                    ->orderBy('id')
+                                    ->get();
+                            }
+
+                            foreach ($refills as $refill) {
+                                if ($remainingQuantity <= 0) break;
+
+                                if ($refill->total_stock >= $remainingQuantity) {
+                                    $refill->total_stock -= $remainingQuantity;
+                                    $refill->save();
+                                    $remainingQuantity = 0;
+                                } else {
+                                    $remainingQuantity -= $refill->total_stock;
+                                    $refill->total_stock = 0;
+                                    $refill->save();
+                                }
+                            }
+
+                            // Create stock transaction for raw material deduction
+                            StockTransaction::create([
+                                'product_id' => $rawMaterial->product_id,
+                                'transaction_type' => 'Deducted',
+                                'quantity' => $item['quantity'],
+                                'transaction_date' => now(),
+                                'notes' => "Used for binding service: {$bindingModel->name}",
+                            ]);
+                        }
+                    }
+
+                    // Create sale item for binding service
+                    SaleItem::create([
+                        'sale_id' => $sale->id,
+                        'binding_id' => $item['id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['selling_price'],
+                        'total_price' => $item['quantity'] * $item['selling_price'],
+                    ]);
+
+                    // Create stock transaction for binding service
+                    StockTransaction::create([
+                        'binding_service_id' => $item['id'],
+                        'transaction_type' => 'Sold',
+                        'quantity' => $item['quantity'],
+                        'transaction_date' => now()->toDateString(),
                     ]);
                 } else {
                     // Handle product
@@ -400,4 +751,446 @@ class PosController extends Controller
         return response()->json(['error' => 'Failed to fetch newspapers'], 500);
     }
 }
+
+    public function getPhotocopyServices()
+    {
+        if (!Gate::allows('hasRole', ['Admin', 'Cashier'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $photocopyServices = PhotocopyService::select(
+                'id', 
+                'name', 
+                'size', 
+                'side', 
+                'pages', 
+                'color', 
+                'price', 
+                'service_charge', 
+                'totalprice'
+            )
+            ->with(['rawMaterials.product'])
+            ->get()
+            ->map(function ($service) {
+                // Calculate available stock based on raw materials
+                $availableStock = $this->calculatePhotocopyServiceStock($service);
+                
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'size' => $service->size,
+                    'side' => $service->side,
+                    'pages' => $service->pages,
+                    'color' => $service->color,
+                    'selling_price' => $service->totalprice,
+                    'cost_price' => $service->price,
+                    'service_charge' => $service->service_charge,
+                    'stock_quantity' => $availableStock,
+                    'has_raw_materials' => $service->rawMaterials->count() > 0,
+                    'raw_materials' => $service->rawMaterials->map(function ($rawMaterial) {
+                        return [
+                            'product_id' => $rawMaterial->product_id,
+                            'product_name' => $rawMaterial->product->name ?? 'Unknown',
+                            'available_stock' => RefillPhotocopy::where('product_id', $rawMaterial->product_id)->sum('stock')
+                        ];
+                    }),
+                    'is_photocopy' => true,
+                ];
+            })
+            ->filter(function ($service) {
+                return $service['stock_quantity'] > 0; // Only return services with available stock
+            })
+            ->values();
+
+            return response()->json(['photocopy_services' => $photocopyServices]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching photocopy services: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch photocopy services'], 500);
+        }
+    }
+
+    private function calculatePhotocopyServiceStock($photocopyService)
+    {
+        // If no raw materials are defined, assume unlimited stock
+        if ($photocopyService->rawMaterials->count() === 0) {
+            return 9999; // Large number to indicate unlimited
+        }
+
+        $minStock = PHP_INT_MAX;
+
+        foreach ($photocopyService->rawMaterials as $rawMaterial) {
+            $availableStock = RefillPhotocopy::where('product_id', $rawMaterial->product_id)->sum('stock');
+            $minStock = min($minStock, $availableStock);
+        }
+
+        return max(0, $minStock === PHP_INT_MAX ? 0 : $minStock);
+    }
+
+    public function getPrintoutServices()
+    {
+        if (!Gate::allows('hasRole', ['Admin', 'Cashier'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $printoutServices = PrintoutService::select(
+                'id', 
+                'name', 
+                'size', 
+                'side', 
+                'pages', 
+                'color', 
+                'price', 
+                'service_charge', 
+                'totalprice'
+            )
+            ->with(['rawMaterials.product'])
+            ->get()
+            ->map(function ($service) {
+                // Calculate available stock based on raw materials
+                $availableStock = $this->calculatePrintoutServiceStock($service);
+                
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'size' => $service->size,
+                    'side' => $service->side,
+                    'pages' => $service->pages,
+                    'color' => $service->color,
+                    'selling_price' => $service->totalprice,
+                    'cost_price' => $service->price,
+                    'service_charge' => $service->service_charge,
+                    'stock_quantity' => $availableStock,
+                    'has_raw_materials' => $service->rawMaterials->count() > 0,
+                    'raw_materials' => $service->rawMaterials->map(function ($rawMaterial) {
+                        return [
+                            'product_id' => $rawMaterial->product_id,
+                            'product_name' => $rawMaterial->product->name ?? 'Unknown',
+                            'available_stock' => RefillPrintout::where('product_id', $rawMaterial->product_id)->sum('total_stock')
+                        ];
+                    }),
+                    'is_printout' => true,
+                ];
+            })
+            ->filter(function ($service) {
+                return $service['stock_quantity'] > 0; // Only return services with available stock
+            })
+            ->values();
+
+            return response()->json(['printout_services' => $printoutServices]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching printout services: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch printout services'], 500);
+        }
+    }
+
+    private function calculatePrintoutServiceStock($printoutService)
+    {
+        // If no raw materials are defined, assume unlimited stock
+        if ($printoutService->rawMaterials->count() === 0) {
+            return 9999; // Large number to indicate unlimited
+        }
+
+        $minStock = PHP_INT_MAX;
+
+        foreach ($printoutService->rawMaterials as $rawMaterial) {
+            $availableStock = RefillPrintout::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+            $minStock = min($minStock, $availableStock);
+        }
+
+        return max(0, $minStock === PHP_INT_MAX ? 0 : $minStock);
+    }
+
+    public function getAllProducts()
+    {
+        if (!Gate::allows('hasRole', ['Admin', 'Cashier'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $products = [];
+
+            // Get regular products
+            $regularProducts = Product::select(
+                'id', 
+                'name', 
+                'barcode', 
+                'code', 
+                'stock_quantity', 
+                'selling_price', 
+                'cost_price', 
+                'discount', 
+                'discounted_price'
+            )
+            ->where('stock_quantity', '>', 0)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'barcode' => $product->barcode,
+                    'code' => $product->code,
+                    'stock_quantity' => $product->stock_quantity,
+                    'selling_price' => $product->selling_price,
+                    'cost_price' => $product->cost_price ?? 0,
+                    'discount' => $product->discount ?? 0,
+                    'discounted_price' => $product->discounted_price ?? $product->selling_price,
+                    'type' => 'product',
+                ];
+            });
+
+            // Get newspapers
+            $newspapers = Newspaper::select(
+                'id', 
+                'name', 
+                'barcode', 
+                'productcode',
+                'stock_quantity', 
+                'selling_price', 
+                'cost_price', 
+                'discount', 
+                'discount_price'
+            )
+            ->where('stock_quantity', '>', 0)
+            ->get()
+            ->map(function ($newspaper) {
+                return [
+                    'id' => $newspaper->id,
+                    'name' => $newspaper->name,
+                    'barcode' => $newspaper->barcode,
+                    'code' => $newspaper->productcode,
+                    'stock_quantity' => $newspaper->stock_quantity,
+                    'selling_price' => $newspaper->selling_price,
+                    'cost_price' => $newspaper->cost_price ?? 0,
+                    'discount' => $newspaper->discount ?? 0,
+                    'discounted_price' => $newspaper->discount_price ?? $newspaper->selling_price,
+                    'type' => 'newspaper',
+                    'is_newspaper' => true,
+                ];
+            });
+
+            // Get photocopy services
+            $photocopyServices = PhotocopyService::with(['rawMaterials.product'])
+                ->get()
+                ->map(function ($service) {
+                    $availableStock = $this->calculatePhotocopyServiceStock($service);
+                    
+                    return [
+                        'id' => $service->id,
+                        'name' => $service->name . ' (' . $service->size . ', ' . $service->side . ', ' . $service->color . ')',
+                        'barcode' => null,
+                        'code' => null,
+                        'stock_quantity' => $availableStock,
+                        'selling_price' => $service->totalprice,
+                        'cost_price' => $service->price,
+                        'discount' => 0,
+                        'discounted_price' => $service->totalprice,
+                        'type' => 'photocopy_service',
+                        'is_photocopy' => true,
+                        'service_details' => [
+                            'size' => $service->size,
+                            'side' => $service->side,
+                            'pages' => $service->pages,
+                            'color' => $service->color,
+                            'service_charge' => $service->service_charge,
+                        ],
+                    ];
+                })
+                ->filter(function ($service) {
+                    return $service['stock_quantity'] > 0;
+                })
+                ->values();
+
+            // Combine all products
+            $products = $regularProducts->concat($newspapers)->concat($photocopyServices);
+
+            return response()->json(['products' => $products]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching all products: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch products'], 500);
+        }
+    }
+
+    public function getLaminatingServices(Request $request)
+    {
+        if (!Gate::allows('hasRole', ['Admin', 'Cashier'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $laminatingServices = LaminatingService::select(
+                'id', 
+                'name', 
+                'pouch_size', 
+                'price', 
+                'service_amount'
+            )
+            ->with(['rawMaterials.product'])
+            ->get()
+            ->map(function ($service) {
+                // Calculate available stock based on raw materials
+                $availableStock = $this->calculateLaminatingServiceStock($service);
+                
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'pouch_size' => $service->pouch_size,
+                    'price' => $service->price, // Base price
+                    'service_amount' => $service->service_amount, // Service charge
+                    'selling_price' => $service->price + $service->service_amount, // Total price
+                    'cost_price' => $service->price,
+                    'stock_quantity' => $availableStock,
+                    'discount' => 0,
+                    'discounted_price' => $service->price + $service->service_amount,
+                    'has_raw_materials' => $service->rawMaterials->count() > 0,
+                    'raw_materials' => $service->rawMaterials->map(function ($rawMaterial) {
+                        // Try to get stock by product_id first, then by product_code if needed
+                        $availableStock = RefillLaminating::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+                        
+                        // If no stock found by product_id, try by product_code
+                        if ($availableStock == 0 && $rawMaterial->product) {
+                            $availableStock = RefillLaminating::where('product_code', $rawMaterial->product->code)->sum('total_stock');
+                        }
+                        
+                        return [
+                            'product_id' => $rawMaterial->product_id,
+                            'product_name' => $rawMaterial->product->name ?? 'Unknown',
+                            'available_stock' => $availableStock
+                        ];
+                    }),
+                    'is_laminating' => true,
+                ];
+            });
+
+            // Filter by stock only if not explicitly requesting all services
+            if (!$request->has('show_all') || !$request->boolean('show_all')) {
+                $laminatingServices = $laminatingServices->filter(function ($service) {
+                    return $service['stock_quantity'] > 0; // Only return services with available stock
+                });
+            }
+
+            $laminatingServices = $laminatingServices->values();
+
+            return response()->json(['laminating_services' => $laminatingServices]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching laminating services: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch laminating services'], 500);
+        }
+    }
+
+    private function calculateLaminatingServiceStock($laminatingService)
+    {
+        // If no raw materials are defined, assume unlimited stock
+        if ($laminatingService->rawMaterials->count() === 0) {
+            return 9999; // Large number to indicate unlimited
+        }
+
+        $minStock = PHP_INT_MAX;
+
+        foreach ($laminatingService->rawMaterials as $rawMaterial) {
+            // Try to get stock by product_id first, then by product_code if needed
+            $availableStock = RefillLaminating::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+            
+            // If no stock found by product_id, try by product_code
+            if ($availableStock == 0 && $rawMaterial->product) {
+                $availableStock = RefillLaminating::where('product_code', $rawMaterial->product->code)->sum('total_stock');
+            }
+            
+            $minStock = min($minStock, $availableStock);
+        }
+
+        return max(0, $minStock === PHP_INT_MAX ? 0 : $minStock);
+    }
+
+    public function getBindingServices(Request $request)
+    {
+        if (!Gate::allows('hasRole', ['Admin', 'Cashier'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        try {
+            $bindingServices = BindingService::select(
+                'id', 
+                'name', 
+                'binding_type',
+                'pages', 
+                'price', 
+                'service_charge', 
+                'totalprice'
+            )
+            ->with(['rawMaterials.product'])
+            ->get()
+            ->map(function ($service) {
+                // Calculate available stock based on raw materials
+                $availableStock = $this->calculateBindingServiceStock($service);
+                
+                return [
+                    'id' => $service->id,
+                    'name' => $service->name,
+                    'binding_type' => $service->binding_type,
+                    'pages' => $service->pages,
+                    'selling_price' => $service->totalprice,
+                    'cost_price' => $service->price,
+                    'service_charge' => $service->service_charge,
+                    'stock_quantity' => $availableStock,
+                    'has_raw_materials' => $service->rawMaterials->count() > 0,
+                    'raw_materials' => $service->rawMaterials->map(function ($rawMaterial) {
+                        // Try to get stock by product_id first, then by product_code if needed
+                        $availableStock = BindingRefill::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+                        
+                        // If no stock found by product_id, try by product_code
+                        if ($availableStock == 0 && $rawMaterial->product) {
+                            $availableStock = BindingRefill::where('product_code', $rawMaterial->product->code)->sum('total_stock');
+                        }
+                        
+                        return [
+                            'product_id' => $rawMaterial->product_id,
+                            'product_name' => $rawMaterial->product->name ?? 'Unknown',
+                            'available_stock' => $availableStock
+                        ];
+                    }),
+                    'is_binding' => true,
+                ];
+            });
+
+            // Filter by stock only if not explicitly requesting all services
+            if (!$request->has('show_all') || !$request->boolean('show_all')) {
+                $bindingServices = $bindingServices->filter(function ($service) {
+                    return $service['stock_quantity'] > 0; // Only return services with available stock
+                });
+            }
+
+            $bindingServices = $bindingServices->values();
+
+            return response()->json(['binding_services' => $bindingServices]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching binding services: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch binding services'], 500);
+        }
+    }
+
+    private function calculateBindingServiceStock($bindingService)
+    {
+        // If no raw materials are defined, assume unlimited stock
+        if ($bindingService->rawMaterials->count() === 0) {
+            return 9999; // Large number to indicate unlimited
+        }
+
+        $minStock = PHP_INT_MAX;
+
+        foreach ($bindingService->rawMaterials as $rawMaterial) {
+            // Try to get stock by product_id first, then by product_code if needed
+            $availableStock = BindingRefill::where('product_id', $rawMaterial->product_id)->sum('total_stock');
+            
+            // If no stock found by product_id, try by product_code
+            if ($availableStock == 0 && $rawMaterial->product) {
+                $availableStock = BindingRefill::where('product_code', $rawMaterial->product->code)->sum('total_stock');
+            }
+            
+            $minStock = min($minStock, $availableStock);
+        }
+
+        return max(0, $minStock === PHP_INT_MAX ? 0 : $minStock);
+    }
 }

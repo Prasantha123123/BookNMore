@@ -17,7 +17,8 @@ class PrintoutService extends Model
         'color',
         'price',
         'service_charge',
-        'totalprice'
+        'totalprice',
+        'service_id'
     ];
 
     protected static function boot()
@@ -41,5 +42,21 @@ class PrintoutService extends Model
     public function calculateTotalPrice()
     {
         return $this->price + $this->service_charge;
+    }
+
+    /**
+     * Get the raw materials for this printout service
+     */
+    public function rawMaterials()
+    {
+        return $this->hasMany(PrintoutServiceRawMaterial::class);
+    }
+
+    /**
+     * Get the service this printout service belongs to
+     */
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
     }
 }
