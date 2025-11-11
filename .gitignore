@@ -5,9 +5,7 @@
 /public/storage
 /storage/*.key
 /vendor
-/.env
 .env.backup
-.env.production
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
@@ -22,3 +20,4 @@ refresh_seed.sh
 merge-development.sh
 *.sqlite*
 /node_modules
+config.bat
