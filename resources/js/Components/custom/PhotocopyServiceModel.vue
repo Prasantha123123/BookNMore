@@ -98,36 +98,57 @@
                 </select>
                 <span v-if="createForm.errors.color" class="error">{{ createForm.errors.color }}</span>
               </div>
+
               <div class="form-group">
                 <label for="price">Price</label>
-                <input v-model="createForm.price" type="number" id="price" placeholder="Enter price" step="0.01" />
+                <input v-model.number="createForm.price" type="number" id="price" placeholder="Enter price" step="0.01" />
                 <span v-if="createForm.errors.price" class="error">{{ createForm.errors.price }}</span>
               </div>
               <div class="form-group">
                 <label for="service_charge">Service Charge</label>
-                <input v-model="createForm.service_charge" type="number" id="service_charge" placeholder="Enter service charge" step="0.01" />
+                <input v-model.number="createForm.service_charge" type="number" id="service_charge" placeholder="Enter service charge" step="0.01" />
                 <span v-if="createForm.errors.service_charge" class="error">{{ createForm.errors.service_charge }}</span>
               </div>
+              <div class="form-group" style="display: flex; gap: 12px; align-items: center;">
+              <label style="margin: 0; font-weight: bold;">Total Price :</label>
+              <div class="info-value" style="font-weight: bold; color: #2563eb;">{{ totalPriceDisplay }}</div>
+            </div>
 
-              <!-- New Category and Product Dropdowns -->
+              <!-- Category and Product Selection -->
               <div class="form-group">
                 <label for="category">Category</label>
-                <input v-model="categorySearch" type="text" placeholder="Search categories..." />
-                <select v-model="selectedCategoryId" id="category">
+                <select v-model="selectedCategoryId" id="category" @change="fetchProductsByCategory(selectedCategoryId)">
+                  <option value="">Select Category</option>
                   <option v-for="category in categories" :key="category.id" :value="category.id">
                     {{ category.name }}
                   </option>
                 </select>
               </div>
 
-              <div class="form-group">
-                <label for="product">Product</label>
-                <input v-model="productSearch" type="text" placeholder="Search products..." />
-                <select v-model="selectedProductId" id="product">
-                  <option v-for="product in products" :key="product.id" :value="product.id">
-                    {{ product.name }}
+              <div class="form-group" v-if="selectedCategoryId">
+                <label for="product">Add Products</label>
+                <select v-model="selectedProductId" id="product" @change="addProduct">
+                  <option value="">Select Product to Add</option>
+                  <option v-for="product in availableProducts" :key="product.id" :value="product.id">
+                    {{ product.name }} - {{ product.code }}
                   </option>
                 </select>
+              </div>
+
+              <!-- Selected Products List -->
+              <!-- Selected Products List -->
+              <div class="form-group">
+                <label>Selected Products: <span class="product-count">({{ selectedProducts.length }} selected)</span></label>
+                <div v-if="selectedProducts.length === 0" class="no-products-selected">
+                  No products selected. Please select a category and add products.
+                </div>
+                <div v-else class="selected-products-list">
+                  <div v-for="product in selectedProducts" :key="product.id" class="selected-product-item">
+                    <span>{{ product.name }} - {{ product.code || 'N/A' }}</span>
+                    <button type="button" @click="removeProduct(product.id)" class="remove-product-btn">&times;</button>
+                  </div>
+                </div>
+                <span v-if="createForm.errors.products" class="error">{{ createForm.errors.products }}</span>
               </div>
 
               <div class="form-actions">
@@ -219,6 +240,25 @@
           @close="closeRefillModal"
           @refill-submitted="handleRefillSubmit"
         />
+
+        <!-- Notification Alert -->
+        <NotificationAlert
+          :visible="notification.visible"
+          :type="notification.type"
+          :title="notification.title"
+          :message="notification.message"
+          :auto-close="notification.autoClose"
+          @close="closeNotification"
+        />
+        <!-- Stock 0 Notification for all unique product codes -->
+        <NotificationAlert
+          v-if="lowStockProducts.length > 0"
+          :visible="true"
+          type="warning"
+          title="Stock Alert"
+          :message="lowStockMessage"
+          :auto-close="false"
+        />
       </div>
     </div>
   </div>
@@ -227,7 +267,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import axios from "axios";
 import RefillPopup from "./RefillPopup.vue";
+import NotificationAlert from "./NotificationAlert.vue";
 
 const isCreateModalOpen = ref(false);
 const isEditModalOpen = ref(false);
@@ -238,6 +280,12 @@ const editingService = ref(null);
 
 const openCreateForm = () => {
   isCreateModalOpen.value = true;
+  // Reset form data
+  selectedProducts.value = [];
+  selectedCategoryId.value = null;
+  selectedProductId.value = null;
+  products.value = [];
+  fetchCategories(); // Ensure categories are loaded
 };
 
 const closeCreateModal = () => {
@@ -252,6 +300,7 @@ const closeRefillModal = () => {
   isRefillModalOpen.value = false;
 };
 
+
 // Create form
 const createForm = useForm({
   name: "",
@@ -259,8 +308,16 @@ const createForm = useForm({
   side: "",
   pages: "",
   color: "",
-  price: "",
-  service_charge: "",
+  price: 0,
+  service_charge: 0,
+  products: [],
+});
+
+// Computed property for total price
+const totalPriceDisplay = computed(() => {
+  const price = Number(createForm.price) || 0;
+  const service = Number(createForm.service_charge) || 0;
+  return (price + service).toFixed(2);
 });
 
 // Edit form
@@ -278,8 +335,7 @@ const categories = ref([]);
 const products = ref([]);
 const selectedCategoryId = ref(null);
 const selectedProductId = ref(null);
-const categorySearch = ref("");
-const productSearch = ref("");
+const selectedProducts = ref([]);
 const showError = ref(false);
 const refillForm = ref({
   product_id: null,
@@ -289,10 +345,84 @@ const refillForm = ref({
 });
 const pagination = ref({});
 
+// Notification state
+const notification = ref({
+  visible: false,
+  type: 'info',
+  title: 'Notification',
+  message: '',
+  autoClose: true
+});
+
+// Low stock products fetched from API
+const lowStockProducts = ref([]);
+const lowStockMessage = computed(() => {
+  if (!lowStockProducts.value.length) return '';
+  return lowStockProducts.value.map(item =>
+    `Stock for ${item.product_name || item.name || 'Product'} (Code: ${item.product_code || item.code || item.id}) is 0. Please refill.`
+  ).join('\n');
+});
+
+// Fetch low stock products from API
+const fetchLowStockProducts = async () => {
+  try {
+    const response = await fetch('/api/photocopy/low-stock', {
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await response.json();
+    if (data && data.success && Array.isArray(data.low_stock_products)) {
+      lowStockProducts.value = data.low_stock_products;
+    } else {
+      lowStockProducts.value = [];
+    }
+  } catch (error) {
+    lowStockProducts.value = [];
+  }
+};
+
+// Helper function to show notifications
+const showNotification = (type, title, message, autoClose = true) => {
+  notification.value = {
+    visible: true,
+    type,
+    title,
+    message,
+    autoClose
+  };
+};
+
+const closeNotification = () => {
+  notification.value.visible = false;
+};
+
 // Computed property to get the selected product details
 const selectedProduct = computed(() => {
   return products.value.find(p => p.id === selectedProductId.value) || null;
 });
+
+// Computed property to get available products (not already selected)
+const availableProducts = computed(() => {
+  return products.value.filter(product => 
+    !selectedProducts.value.some(selected => selected.id === product.id)
+  );
+});
+
+// Add product to selected list
+const addProduct = () => {
+  if (selectedProductId.value) {
+    const product = products.value.find(p => p.id === selectedProductId.value);
+    if (product && !selectedProducts.value.some(p => p.id === product.id)) {
+      selectedProducts.value.push(product);
+      selectedProductId.value = null; // Reset selection
+    }
+  }
+};
+
+
+// Remove product from selected list
+const removeProduct = (productId) => {
+  selectedProducts.value = selectedProducts.value.filter(p => p.id !== productId);
+};
 
 // Fetch services from API
 const fetchServices = async () => {
@@ -329,10 +459,17 @@ const fetchCategories = async () => {
         Accept: "application/json",
       },
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const data = await response.json();
-    categories.value = data;
+    console.log('Categories fetched:', data); // Debug log
+    categories.value = Array.isArray(data.categories) ? data.categories : [];
   } catch (error) {
     console.error("Error fetching categories:", error);
+    categories.value = [];
   }
 };
 
@@ -376,7 +513,7 @@ const fetchProducts = async (url = '/api/products') => {
     }
   } catch (error) {
     console.error('Error fetching products:', error);
-    alert('Failed to load products. Please try refreshing the page.');
+    showNotification('error', 'Error', 'Failed to load products. Please try refreshing the page.');
   }
 };
 
@@ -384,25 +521,41 @@ onMounted(() => {
   fetchServices();
   fetchCategories();
   fetchProducts();
+  fetchLowStockProducts();
 });
 
-watch(selectedCategoryId, (newCategoryId) => {
-  if (newCategoryId) {
-    fetchProductsByCategory(newCategoryId);
-  }
-});
+// Removed watcher - using @change event instead
 
 const fetchProductsByCategory = async (categoryId) => {
+  if (!categoryId) {
+    products.value = [];
+    return;
+  }
+  
   try {
-    const response = await fetch(`/api/products?category_id=${categoryId}`, {
+    console.log('Fetching products for category:', categoryId);
+    
+    // Use axios with dedicated photocopy endpoint
+    const response = await axios.get('/api/photocopy/products', {
+      params: { category_id: categoryId },
       headers: {
         Accept: "application/json",
-      },
+        "X-Requested-With": "XMLHttpRequest"
+      }
     });
-    const data = await response.json();
-    products.value = data;
+    
+    console.log('Products response:', response);
+    console.log('Products data:', response.data);
+    
+    products.value = Array.isArray(response.data) ? response.data : [];
+    console.log('Products set to:', products.value.length, 'items');
   } catch (error) {
     console.error("Error fetching products:", error);
+    if (error.response) {
+      console.error('Error response:', error.response.data);
+      console.error('Error status:', error.response.status);
+    }
+    products.value = [];
   }
 };
 
@@ -416,19 +569,75 @@ const filteredServices = computed(() => {
 });
 
 const submitForm = () => {
+  // Validate that at least one product is selected
+  if (selectedProducts.value.length === 0) {
+    showNotification('warning', 'Validation Error', 'Please select at least one product before creating the service.');
+    return;
+  }
+  
+  // Validate basic form fields
+  if (!createForm.name || !createForm.size || !createForm.side || !createForm.pages || !createForm.color || !createForm.price || !createForm.service_charge) {
+    showNotification('warning', 'Validation Error', 'Please fill in all required fields.');
+    return;
+  }
+  
+  // Prepare form data with products as array of IDs
+  const productsArray = selectedProducts.value.map(p => p.id);
+  
+  // Log what we're about to submit
+  console.log('Submitting form with data:', {
+    name: createForm.name,
+    size: createForm.size,
+    side: createForm.side,
+    pages: createForm.pages,
+    color: createForm.color,
+    price: createForm.price,
+    service_charge: createForm.service_charge,
+    products: productsArray
+  });
+  
+  // Set the products array
+  createForm.products = productsArray;
+  
+  // Submit the form
   createForm.post("/photocopy-services", {
-    onSuccess: () => {
+    preserveScroll: true,
+    onSuccess: (response) => {
+      console.log('Photocopy service created successfully:', response);
+      
+      // Show success message
+      showNotification('success', 'Success', 'Photocopy service created successfully!');
+      
+      // Refresh services list
       fetchServices();
+      
+      // Close modal
       closeCreateModal();
+      
+      // Reset form
       createForm.reset();
+      
+      // Reset selections
+      selectedProducts.value = [];
+      selectedCategoryId.value = null;
+      selectedProductId.value = null;
+      products.value = [];
     },
     onError: (errors) => {
       console.error("Validation errors:", errors);
+      
+      // Show error message
+      const errorMessages = Object.values(errors).flat().join('\n');
+      showNotification('error', 'Validation Error', 'Error creating photocopy service:\n' + errorMessages);
+      
       createForm.errors = errors;
     },
+    onFinish: () => {
+      console.log('Form submission finished');
+      createForm.processing = false;
+    }
   });
 };
-
 const editService = async (service) => {
   try {
     const response = await fetch(`/photocopy-services/${service.id}`, {
@@ -535,7 +744,7 @@ const selectProduct = (product) => {
 <style scoped>
 .page-content {
   width: 100%;
-  margin-bottom: 200px;
+  margin-bottom: 400px;
 }
 
 .content-wrapper {
@@ -682,8 +891,10 @@ const selectProduct = (product) => {
 }
 
 .modal-header h2 {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
   margin: 0;
-  font-size: 22px;
 }
 
 .close-button {
@@ -1091,5 +1302,66 @@ const selectProduct = (product) => {
 .pagination button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+/* Selected Products List Styles */
+.selected-products-list {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+.selected-product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.selected-product-item:last-child {
+  margin-bottom: 0;
+}
+
+.remove-product-btn {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-product-btn:hover {
+  background-color: #ff3333;
+}
+
+.product-count {
+  color: #666;
+  font-weight: normal;
+  font-size: 14px;
+}
+
+.no-products-selected {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  background-color: #f5f5f5;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  font-style: italic;
 }
 </style>

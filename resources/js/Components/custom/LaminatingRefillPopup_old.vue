@@ -2,156 +2,112 @@
   <div v-if="isOpen" class="modal-overlay">
     <div class="pos-modal-content">
       <div class="modal-header">
-        <h2>Refill Laminating Stock</h2>
-        <button @click="closePopup" class="close-button" title="Close">×</button>
+        <h2>{{ selectedProductId ? 'Refill Laminating Stock' : 'Select Product for Laminating' }}</h2>
+        <div v-if="!selectedProductId" class="search-bar">
+          <input v-model="search" type="text" placeholder="Search products..." @input="handleSearch" />
+        </div>
+        <button type="button" @click.stop="closePopup" class="close-button" aria-label="Close modal">×</button>
       </div>
+      
       <div class="modal-body">
-        <div class="pos-layout">
-          <!-- Product Selection Section -->
-          <div v-if="!selectedProductId" class="product-selection-section">
-            <div class="search-bar">
-              <input 
-                v-model="search" 
-                type="text" 
-                placeholder="Search laminating products..." 
-                @input="handleSearch"
-                class="search-input"
-              />
-            </div>
-            
-            <div class="filter-options">
-              <select
-                v-model="selectedCategory"
-                @change="fetchProducts"
-                class="filter-select"
-              >
-                <option value="">All Categories</option>
-                <option
-                  v-for="category in categories"
-                  :key="category.id"
-                  :value="category.id"
-                >
-                  {{ category.name }}
-                </option>
-              </select>
+        <!-- Product Selection View -->
+        <div v-if="!selectedProductId" class="product-selection-section">
+          <div class="filter-options">
+            <select v-model="selectedCategory" @change="fetchProducts" class="filter-select">
+              <option value="">Filter by Category</option>
+              <option v-for="category in categories" :key="category.id" :value="category.id">
+                {{ category.name }}
+              </option>
+            </select>
 
-             
-               <select
-            v-model="stockStatus"
-            @change="fetchProducts"
-            class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
-          >
-            <option value="">Filter by Stock</option>
-            <option value="in">In Stock</option>
-            <option value="out">Out of Stock</option>
-          </select>
+            <select v-model="stockStatus" @change="fetchProducts" class="filter-select">
+              <option value="">Filter by Stock</option>
+              <option value="in">In Stock</option>
+              <option value="out">Out of Stock</option>
+            </select>
 
-          <select
-            v-model="sort"
-            @change="fetchProducts"
-            class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
-          >
-            <option value="">Filter by Price</option>
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
+            <select v-model="sort" @change="fetchProducts" class="filter-select">
+              <option value="">Filter by Price</option>
+              <option value="asc">Price: Low to High</option>
+              <option value="desc">Price: High to Low</option>
+            </select>
 
+            <select v-model="color" @change="fetchProducts" class="filter-select">
+              <option value="">Filter by Color</option>
+              <option v-for="colorOption in colors" :key="colorOption.id" :value="colorOption.name">
+                {{ colorOption.name }}
+              </option>
+            </select>
 
-          <select
-            v-model="size"
-            @change="fetchProducts"
-            class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
-          >
-            <option value="">Filter by Size</option>
-            <option
-              v-for="sizeOption in sizes"
-              :key="sizeOption.id"
-              :value="sizeOption.name"
-            >
-              {{ sizeOption.name }}
-            </option>
-          </select>
+            <select v-model="size" @change="fetchProducts" class="filter-select">
+              <option value="">Filter by Size</option>
+              <option v-for="sizeOption in sizes" :key="sizeOption.id" :value="sizeOption.name">
+                {{ sizeOption.name }}
+              </option>
+            </select>
 
-              <button
-                @click="resetFilters"
-                class="reset-button"
-              >
-                Reset Filters
-              </button>
+            <button @click="resetFilters" class="reset-button">Reset</button>
             </div>
 
-            <div class="product-list-container">
-              <div v-if="loading" class="loading-state">
-                Loading laminating products...
-              </div>
-              
-              <div v-else-if="laminatingProducts.length === 0" class="empty-state">
-                No laminating products found.
-              </div>
+          <!-- Loading State -->
+          <div v-if="loading" class="loading-state">
+            <p>Loading products...</p>
+          </div>
 
-              <div v-else class="product-grid">
-                <div 
-                  v-for="product in laminatingProducts" 
-                  :key="product.id" 
-                  class="product-card"
-                  :class="{ 'selected': selectedProductId === product.id }"
-                  @click="selectProduct(product)"
+          <!-- Products Grid -->
+          <div v-else-if="laminatingProducts.length > 0" class="horizontal-product-scroll">
+            <div class="product-grid">
+              <label v-for="product in laminatingProducts" :key="product.id" class="product-card">
+                <input 
+                  type="radio" 
+                  :value="product.id" 
+                  v-model="selectedProductId" 
+                  name="product-select"
+                  class="radio-input"
                 >
-                  <div class="product-card-content">
-                    <h3>{{ product.name }}</h3>
-                    <div class="product-info">
-                      <div class="info-line">
-                        <span class="label">Price:</span>
-                        <span class="value">{{ formatPrice(product.selling_price) }} LKR</span>
-                      </div>
-                      <div class="info-line">
-                        <span class="label">Stock:</span>
-                        <span class="value" :class="getStockClass(product.stock_quantity)">
-                          {{ product.stock_quantity }}
-                        </span>
-                      </div>
-                       <div class="info-line">
-                        <span class="label">code:</span>
-                        <span class="value" :class="getStockClass(product.code)">
-                          {{ product.code }}
-                        </span>
-                      </div>
-                      <div class="info-line barcode">
-                        <span class="label">Barcode:</span>
-                        <span class="value">{{ product.barcode || 'N/A' }}</span>
-                      </div>
-                    </div>
-                    <div class="select-indicator">
-                      <div class="checkmark" v-if="selectedProductId === product.id">✓</div>
-                    </div>
+                <div class="product-card-content">
+                  <h3>{{ product.name }}</h3>
+                  <div class="product-info">
+                    <div class="info-line">Price: {{ formatPrice(product.selling_price) }} LKR</div>
+                    <div class="info-line">Stock: {{ product.stock_quantity }}</div>
+                    <div class="info-line barcode">Barcode: {{ product.barcode || 'N/A' }}</div>
+                  </div>
+                  <div class="select-circle">
+                    <div class="inner-circle"></div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div class="pos-pagination" v-if="pagination && pagination.last_page > 1">
-              <button 
-                class="pagination-button" 
-                @click="changePage(currentPage - 1)" 
-                :disabled="currentPage === 1"
-              >
-                Previous
-              </button>
-              <span class="pagination-info">
-                Page {{ currentPage }} of {{ totalPages }}
-              </span>
-              <button 
-                class="pagination-button" 
-                @click="changePage(currentPage + 1)" 
-                :disabled="currentPage === totalPages"
-              >
-                Next
-              </button>
+              </label>
             </div>
           </div>
-          
-          <!-- Refill Stock Form Section -->
-          <div v-else class="refill-form-section">
+
+          <!-- No Products -->
+          <div v-else class="no-products">
+            <p>No products found</p>
+          </div>
+
+          <div class="pos-pagination">
+            <button 
+              class="pagination-button" 
+              @click="changePage(currentPage - 1)" 
+              :disabled="currentPage === 1"
+            >
+              Previous
+            </button>
+            <span class="pagination-info">
+              Page {{ currentPage }} of {{ totalPages }}
+            </span>
+            <button 
+              class="pagination-button" 
+              @click="changePage(currentPage + 1)" 
+              :disabled="currentPage === totalPages"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+        
+        <!-- Stock Refill Form -->
+        <div v-if="selectedProductId" class="refill-form-section">
             <div class="selected-product-header">
               <h3>Add Stock for {{ selectedProduct?.name }}</h3>
               <button @click="selectedProductId = null" class="change-product-button">
@@ -170,7 +126,6 @@
                 <span class="info-label">Price:</span>
                 <span class="info-value">{{ formatPrice(selectedProduct?.selling_price) }} LKR</span>
               </div>
-              
               <div class="info-row">
                 <span class="info-label">Barcode:</span>
                 <span class="info-value">{{ selectedProduct?.barcode || 'N/A' }}</span>
@@ -365,8 +320,7 @@ const fetchCategories = async () => {
       throw new Error('Failed to fetch categories');
     }
     
-    const data = await response.json();
-    categories.value = Array.isArray(data.categories) ? data.categories : [];
+    categories.value = await response.json();
   } catch (error) {
     console.error('Error fetching categories:', error);
     // Use empty array as fallback
@@ -491,6 +445,7 @@ onMounted(() => {
   border-bottom: 1px solid #e0e0e0;
   background-color: #f8f9fa;
   border-radius: 8px 8px 0 0;
+  position: relative; /* allow absolute close button */
 }
 
 .modal-header h2 {
@@ -501,17 +456,21 @@ onMounted(() => {
 }
 
 .close-button {
-  background: none;
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ff4d4d;
+  color: white;
   border: none;
-  font-size: 28px;
-  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
   cursor: pointer;
-  padding: 0 8px;
-  transition: color 0.2s;
-}
-
-.close-button:hover {
-  color: #333;
+  z-index: 30;
 }
 
 .modal-body {

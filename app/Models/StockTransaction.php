@@ -11,11 +11,16 @@ class StockTransaction extends Model
     protected $fillable = [
         'product_id',
         'newspaper_id',
+        'photocopy_service_id',
+        'printout_service_id',
+        'laminating_service_id',
+        'binding_service_id',
         'transaction_type',
         'quantity',
         'transaction_date',
         'supplier_id',
         'reason',
+        'notes',
     ];
 
      // Relationships
@@ -34,5 +39,25 @@ class StockTransaction extends Model
         public function newspaper()
         {
             return $this->belongsTo(Newspaper::class);
+        }
+
+        public function photocopyService()
+        {
+            return $this->belongsTo(PhotocopyService::class);
+        }
+
+        public function printoutService()
+        {
+            return $this->belongsTo(PrintoutService::class);
+        }
+
+        public function laminatingService()
+        {
+            return $this->belongsTo(LaminatingService::class);
+        }
+
+        public function bindingService()
+        {
+            return $this->belongsTo(BindingService::class);
         }
 }

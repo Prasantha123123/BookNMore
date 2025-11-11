@@ -27,6 +27,7 @@ use App\Http\Controllers\BindingController;
 use App\Http\Controllers\LaminatingController;
 use App\Http\Controllers\RefillPhotocopyController;
 use App\Http\Controllers\RefillPrintoutController;
+use App\Http\Controllers\RefillBindingController;
 use App\Http\Controllers\BindingRefillController;
 use App\Http\Controllers\RefillLaminatingController;
 use App\Http\Controllers\SimReloadController;
@@ -104,6 +105,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/get-coupon', [PosController::class, 'getCoupon'])->name('pos.getCoupon');
     Route::post('/pos/submit', [PosController::class, 'submit'])->name('pos.submit');
     Route::get('/api/newspapers', [PosController::class, 'getNewspapers'])->name('pos.getNewspapers');
+    Route::get('/api/photocopy-services', [PosController::class, 'getPhotocopyServices'])->name('pos.getPhotocopyServices');
+    Route::get('/api/printout-services', [PosController::class, 'getPrintoutServices'])->name('pos.getPrintoutServices');
+    Route::get('/api/binding-services', [PosController::class, 'getBindingServices'])->name('pos.getBindingServices');
+    Route::get('/api/laminating-services', [PosController::class, 'getLaminatingServices'])->name('pos.getLaminatingServices');
+    Route::get('/api/all-products', [PosController::class, 'getAllProducts'])->name('pos.getAllProducts');
     Route::resource('payment', PaymentController::class);
     Route::resource('reports', ReportController::class);
     Route::get('/batch-management/search', [ReportController::class, 'searchByCode']);
@@ -227,17 +233,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Refill Photocopy Routes
     Route::get('/refillphotocopy', [RefillPhotocopyController::class, 'index'])->name('refillphotocopy.index');
     Route::post('/refillphotocopy', [RefillPhotocopyController::class, 'store'])->name('refillphotocopy.store');
+    Route::post('/api/refill-photocopy', [RefillPhotocopyController::class, 'store']);
+    // API: Get all products with stock 0 (for notification)
+    Route::get('/api/photocopy/low-stock', [RefillPhotocopyController::class, 'lowStockProducts']);
+    Route::get('/api/printout/low-stock', [RefillPrintoutController::class, 'lowStockProducts']);
+    Route::get('/api/binding/low-stock', [RefillBindingController::class, 'lowStockProducts']);
+    Route::get('/api/laminating/low-stock', [RefillLaminatingController::class, 'lowStockProducts']);
     Route::post('/api/refill-printout', [RefillPrintoutController::class, 'store']);
-
-
-    // Add this route for categories
-Route::get('/api/categories', [CategoryController::class, 'index']);
-
-// Add this route for laminating refill
-Route::post('/api/refill-laminating', [LaminatingController::class, 'refillStock']);
 
     // Add this route to your web.php file
 Route::get('/printout-services', [PrintoutController::class, 'index'])->name('printout-services.index');
+Route::get('/binding-services', [BindingController::class, 'index'])->name('binding-services.index');
     
     Route::post('/api/refill-binding', [BindingRefillController::class, 'store']);
     Route::post('/api/refill-binding-by-code', [BindingRefillController::class, 'storeByCode']);
@@ -247,24 +253,19 @@ Route::get('/printout-services', [PrintoutController::class, 'index'])->name('pr
     Route::post('/api/refill-laminating', [RefillLaminatingController::class, 'store']);
     Route::post('/api/refill-laminating-by-code', [RefillLaminatingController::class, 'storeByCode']);
 
-    // Wallet Routes
-    Route::prefix('wallet')->group(function () {
-        Route::get('accounts', [WalletController::class, 'getAccounts'])->name('wallet.accounts');
-        Route::post('deposit', [WalletController::class, 'deposit'])->name('wallet.deposit');
-        Route::post('sell', [WalletController::class, 'sell'])->name('wallet.sell');
-        Route::post('quote', [WalletController::class, 'quote'])->name('wallet.quote');
-        Route::get('transactions', [WalletController::class, 'transactions'])->name('wallet.transactions');
-        Route::post('transactions/export-pdf', [WalletController::class, 'exportTransactionsPDF'])->name('wallet.transactions.export-pdf');
-        Route::get('operators', [WalletController::class, 'getOperators'])->name('wallet.operators');
-        Route::get('packages', [WalletController::class, 'getPackages'])->name('wallet.packages');
-    });
+    // API routes for services
+    Route::get('/api/categories', [PhotocopyServiceController::class, 'fetchCategories']);
+    Route::get('/api/products', [PhotocopyServiceController::class, 'fetchProducts']);
     
-    // Reload Packages CRUD
-    Route::resource('reload-packages', ReloadPackageController::class);
+    // Laminating service API routes
+    Route::get('/api/laminating/categories', [LaminatingController::class, 'fetchCategories']);
+    Route::get('/api/laminating/products', [LaminatingController::class, 'fetchProducts']);
+
+    Route::get('/api/binding/products', [BindingController::class, 'fetchProducts']);
     
-    // Operator Management
-    Route::resource('operators', OperatorController::class);
-    Route::patch('operators/{operator}/toggle-status', [OperatorController::class, 'toggleStatus'])->name('operators.toggle-status');
+    Route::get('/api/photocopy/products', [PhotocopyServiceController::class, 'fetchProducts']);
+    
+    Route::get('/api/printout/products', [PrintoutController::class, 'fetchProducts']);
 });
 
 

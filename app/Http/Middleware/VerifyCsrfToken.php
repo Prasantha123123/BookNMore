@@ -13,5 +13,11 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         '/api/products',
+        '/api/refill-laminating',
+        '/api/refill-laminating-by-code',
+        '/api/laminating-services',
+        '/api/refill-printout',
+        '/api/refill-binding',
+        '/api/refill-photocopy',
     ];
 }
