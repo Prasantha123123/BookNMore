@@ -14,5 +14,16 @@ class LaminatingService extends Model
         'pouch_size',
         'price',
         'service_amount',
+        'service_id',
     ];
+
+    public function rawMaterials()
+    {
+        return $this->hasMany(LaminatingServiceRawMaterial::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
+    }
 }

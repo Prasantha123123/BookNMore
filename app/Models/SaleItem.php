@@ -13,7 +13,10 @@ class SaleItem extends Model
         'sale_id',
         'product_id',
         'newspaper_id',
-        'photocopy_id', // Added photocopy_id
+        'photocopy_id',
+        'printout_id',
+        'laminating_id',
+        'binding_id',
         'quantity',
         'unit_price',
         'total_price',
@@ -38,5 +41,20 @@ class SaleItem extends Model
     public function photocopyService()
     {
         return $this->belongsTo(PhotocopyService::class, 'photocopy_id', 'id');
+    }
+
+    public function printoutService()
+    {
+        return $this->belongsTo(PrintoutService::class, 'printout_id', 'id');
+    }
+
+    public function laminatingService()
+    {
+        return $this->belongsTo(LaminatingService::class, 'laminating_id', 'id');
+    }
+
+    public function bindingService()
+    {
+        return $this->belongsTo(BindingService::class, 'binding_id', 'id');
     }
 }

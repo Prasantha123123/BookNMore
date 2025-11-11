@@ -93,4 +93,33 @@ class RefillLaminatingController extends Controller
             'refill' => $refill
         ], 201);
     }
+
+    /**
+     * API: Get all products with stock 0 (grouped by product code)
+     */
+    public function lowStockProducts()
+    {
+        // Get all unique product codes from refill_laminatings
+        $productCodes = RefillLaminating::distinct('product_code')->pluck('product_code');
+        
+        $lowStockProducts = [];
+        
+        // For each product code, get the latest record and check if stock is 0
+        foreach ($productCodes as $code) {
+            $latestRefill = RefillLaminating::where('product_code', $code)
+                ->orderBy('updated_at', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->first();
+                
+            // If the latest record has total_stock 0, add it to low stock list
+            if ($latestRefill && $latestRefill->total_stock == 0) {
+                $lowStockProducts[] = $latestRefill;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'low_stock_products' => $lowStockProducts
+        ]);
+    }
 }

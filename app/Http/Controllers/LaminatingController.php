@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\LaminatingService;
+use App\Models\LaminatingServiceRawMaterial;
+use App\Models\Category;
 use App\Models\Product;
 use Inertia\Inertia;
 
@@ -29,16 +31,92 @@ class LaminatingController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'pouch_size' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'service_amount' => 'required|numeric|min:0',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'pouch_size' => 'required|string|max:255',
+                'price' => 'required|numeric|min:0',
+                'service_amount' => 'required|numeric|min:0',
+                'products' => 'required|array|min:1',
+                'products.*' => 'required|exists:products,id',
+            ]);
 
-        LaminatingService::create($validated);
+            // Use database transaction to ensure data integrity
+            \DB::beginTransaction();
+            
+            try {
+                // Create the laminating service
+                $laminatingService = LaminatingService::create([
+                    'name' => $validated['name'],
+                    'pouch_size' => $validated['pouch_size'],
+                    'price' => $validated['price'],
+                    'service_amount' => $validated['service_amount'],
+                    'service_id' => 3, // Laminating service ID
+                ]);
 
-        return redirect()->back()->with('success', 'Service created successfully');
+                \Log::info('Laminating service created', ['service_id' => $laminatingService->id]);
+
+                // Store selected products in raw materials table
+                foreach ($validated['products'] as $productId) {
+                    $rawMaterial = LaminatingServiceRawMaterial::create([
+                        'laminating_service_id' => $laminatingService->id,
+                        'product_id' => $productId,
+                    ]);
+                    
+                    \Log::info('Raw material created', [
+                        'raw_material_id' => $rawMaterial->id,
+                        'service_id' => $laminatingService->id,
+                        'product_id' => $productId
+                    ]);
+                }
+
+                \DB::commit();
+
+                if ($request->expectsJson() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Laminating service created successfully',
+                        'laminatingService' => $laminatingService->load('rawMaterials.product')
+                    ], 201);
+                }
+
+                return redirect()->back()->with('success', 'Laminating service created successfully.');
+                
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                throw $e;
+            }
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error', ['errors' => $e->errors()]);
+            
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
+            
+        } catch (\Exception $e) {
+            \Log::error('Error creating laminating service', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while creating the laminating service',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -109,5 +187,32 @@ class LaminatingController extends Controller
             'message' => 'Stock refilled successfully',
             'product' => $product
         ], 200);
+    }
+
+    /**
+     * Fetch all categories.
+     */
+    public function fetchCategories()
+    {
+        $categories = Category::all();
+        return response()->json($categories);
+    }
+
+    /**
+     * Fetch products based on the selected category.
+     */
+    public function fetchProducts(Request $request)
+    {
+        $categoryId = $request->query('category_id');
+        
+        if (!$categoryId) {
+            return response()->json([]);
+        }
+        
+        $products = Product::where('category_id', $categoryId)
+                          ->select('id', 'name', 'code', 'category_id')
+                          ->get();
+                          
+        return response()->json($products);
     }
 }

@@ -9,6 +9,34 @@ use App\Models\Product;
 class RefillPhotocopyController extends Controller
 {
     /**
+     * API: Get all products with stock 0 (grouped by product code)
+     */
+    public function lowStockProducts()
+    {
+        // Get all unique product codes from refill_photocopies
+        $productCodes = RefillPhotocopy::distinct('product_code')->pluck('product_code');
+        
+        $lowStockProducts = [];
+        
+        // For each product code, get the latest record and check if stock is 0
+        foreach ($productCodes as $code) {
+            $latestRefill = RefillPhotocopy::where('product_code', $code)
+                ->orderBy('updated_at', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->first();
+                
+            // If the latest record has stock 0, add it to low stock list
+            if ($latestRefill && $latestRefill->stock == 0) {
+                $lowStockProducts[] = $latestRefill;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'low_stock_products' => $lowStockProducts
+        ]);
+    }
+    /**
      * Display a listing of the resource.
      */
     public function index()
