@@ -5,18 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class PhotocopyServiceRawMaterial extends Model
+class BindingServiceRawMaterial extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'photocopy_service_id',
+        'binding_service_id',
         'product_id',
     ];
 
-    public function photocopyService()
+    public function bindingService()
     {
-        return $this->belongsTo(PhotocopyService::class);
+        return $this->belongsTo(BindingService::class);
     }
 
     public function product()

@@ -23,6 +23,7 @@ class PhotocopyService extends Model
         'price',
         'service_charge',
         'totalprice',
+        'service_id',
     ];
 
     /**

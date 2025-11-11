@@ -5,19 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class PhotocopyServiceRawMaterial extends Model
+class RefillBinding extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'photocopy_service_id',
         'product_id',
+        'product_code',
+        'product_name',
+        'quantity',
+        'total_stock',
     ];
 
-    public function photocopyService()
-    {
-        return $this->belongsTo(PhotocopyService::class);
-    }
+    protected $casts = [
+        'quantity' => 'integer',
+        'total_stock' => 'integer',
+    ];
 
     public function product()
     {
