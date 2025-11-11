@@ -7,13 +7,13 @@
         <DialogPanel class="w-full max-w-6xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
           <div class="flex justify-between items-center mb-4">
             <DialogTitle as="h3" class="text-2xl font-medium leading-6 text-gray-900">
-              Select Printout Services
+              Select Laminating Services
             </DialogTitle>
             <div class="flex items-center space-x-2">
               <input
                 type="text"
                 v-model="searchQuery"
-                placeholder="Search printout services..."
+                placeholder="Search laminating services..."
                 class="px-3 py-2 border border-gray-300 rounded-md w-64"
               />
               <button
@@ -31,7 +31,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <div class="text-gray-500">Loading printout services...</div>
+            <div class="text-gray-500">Loading laminating services...</div>
           </div>
 
           <div v-else-if="error" class="flex justify-center items-center py-8">
@@ -75,12 +75,10 @@
       <h4 class="text-lg font-medium text-gray-900">{{ service.name }}</h4>
       <p class="text-sm text-gray-600 mt-1">{{ service.description }}</p>
       <div class="mt-2 space-y-1">
-        <p class="text-sm">Pages: {{ service.pages || 'N/A' }}</p>
-        <p class="text-sm">Color: {{ service.color || 'N/A' }}</p>
-        <p class="text-sm">Side: {{ service.side || 'N/A' }}</p>
-        <p class="text-sm">Size: {{ service.size || 'N/A' }}</p>
-        <p class="text-sm font-semibold text-blue-600">Total Price: {{ service.totalprice || service.price || 0 }} LKR</p>
-       
+        <p class="text-sm">Pouch Size: {{ service.pouch_size || 'N/A' }}</p>
+        <p class="text-sm font-semibold text-blue-600">Price: {{ service.price || 0 }} LKR</p>
+        <p class="text-sm">Service Amount: {{ service.service_amount || 0 }} LKR</p>
+        <p class="text-sm">Stock: {{ service.stock_quantity || service.stock || 'N/A' }}</p>
         <p v-if="service.barcode" class="text-sm text-gray-500">Barcode: {{ service.barcode }}</p>
       </div>
     </div>
@@ -88,26 +86,10 @@
 </div>
             </div>
 
-            <!-- Pagination -->
+            <!-- Action Buttons -->
             <div class="flex items-center justify-between border-t pt-4">
-              <div class="flex items-center">
-                <button
-                  :disabled="currentPage === 1"
-                  @click="currentPage--"
-                  class="px-3 py-1 rounded-md text-sm font-medium text-gray-700 bg-gray-100 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <span class="mx-4 text-sm text-gray-700">
-                  Page {{ currentPage }} of {{ totalPages }}
-                </span>
-                <button
-                  :disabled="currentPage === totalPages"
-                  @click="currentPage++"
-                  class="px-3 py-1 rounded-md text-sm font-medium text-gray-700 bg-gray-100 disabled:opacity-50"
-                >
-                  Next
-                </button>
+              <div class="text-sm text-gray-600">
+                Showing {{ filteredServices.length }} laminating service(s)
               </div>
 
               <div class="flex items-center space-x-3">
@@ -147,57 +129,41 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(["update:open", "import-printouts"]);
+const emit = defineEmits(["update:open", "import-laminatings"]);
 
 const searchQuery = ref("");
 const selectedServices = ref([]);
-const printouts = ref([]);
+const laminatings = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const currentPage = ref(1);
 const itemsPerPage = 6;
 
-const fetchPrintouts = async () => {
+const fetchLaminatings = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await axios.get("/printout-services", {
+    const response = await axios.get("/api/laminating-services?show_all=true", {
       headers: {
         "Accept": "application/json",
         "X-Requested-With": "XMLHttpRequest"
       }
     });
     
-    if (response.data?.printoutServices) {
-      printouts.value = response.data.printoutServices;
+    if (response.data?.laminating_services) {
+      laminatings.value = response.data.laminating_services;
     } else if (Array.isArray(response.data)) {
-      printouts.value = response.data;
+      laminatings.value = response.data;
     } else {
       throw new Error("Invalid data structure received");
     }
   } catch (err) {
-    console.error("Error fetching printout services:", err);
-    error.value = err.response?.data?.message || "Failed to load printout services";
+    console.error("Error fetching laminating services:", err);
+    error.value = err.response?.data?.message || "Failed to load laminating services";
   } finally {
     loading.value = false;
   }
 };
-
-const filteredServices = computed(() => {
-  if (!searchQuery.value) return printouts.value;
-  const query = searchQuery.value.toLowerCase();
-  return printouts.value.filter(
-    (service) =>
-      service.name?.toLowerCase().includes(query) ||
-      service.description?.toLowerCase().includes(query) ||
-      service.size?.toLowerCase().includes(query) ||
-      service.color?.toLowerCase().includes(query)
-  );
-});
-
-const totalPages = computed(() => {
-  return Math.ceil(filteredServices.value.length / itemsPerPage);
-});
 
 const isServiceSelected = (service) => {
   return selectedServices.value.some(selected => selected.id === service.id);
@@ -211,11 +177,24 @@ const toggleServiceSelection = (service) => {
     selectedServices.value.splice(index, 1);
   }
 };
+const filteredServices = computed(() => {
+  if (!searchQuery.value) return laminatings.value;
+  const query = searchQuery.value.toLowerCase();
+  return laminatings.value.filter(
+    (service) =>
+      service.name?.toLowerCase().includes(query) ||
+      service.description?.toLowerCase().includes(query) ||
+      service.pouch_size?.toLowerCase().includes(query)
+  );
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredServices.value.length / itemsPerPage);
+});
 
 const paginatedServices = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  return filteredServices.value.slice(start, end);
+  // Return all filtered services without pagination
+  return filteredServices.value;
 });
 
 watch(searchQuery, () => {
@@ -230,19 +209,19 @@ const closeModal = () => {
 };
 
 const importSelected = () => {
-  emit("import-printouts", selectedServices.value);
+  emit("import-laminatings", selectedServices.value);
   closeModal();
 };
 
 onMounted(() => {
   if (props.open) {
-    fetchPrintouts();
+    fetchLaminatings();
   }
 });
 
 watch(() => props.open, (newValue) => {
   if (newValue) {
-    fetchPrintouts();
+    fetchLaminatings();
   }
 });
 </script>

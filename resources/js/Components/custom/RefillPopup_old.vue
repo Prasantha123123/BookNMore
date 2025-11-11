@@ -4,7 +4,7 @@
       <div class="modal-header">
         <h2>Refill Stock</h2>
         <button @click="openProductSelection" class="user-manual-button">User Manual</button>
-        <button @click="closeModal" class="close-button">×</button>
+        <button type="button" @click.stop="closeModal" class="close-button" aria-label="Close modal">×</button>
       </div>
       <div class="modal-body">
         <div class="selected-product-info">
@@ -55,12 +55,12 @@
   <!-- Combined Product Selection and Refill Modal -->
   <div v-if="isRefillModalOpen" class="modal-overlay">
     <div class="pos-modal-content">
-      <div class="modal-header">
-        <h2>{{ selectedProductId ? 'Refill Stock' : 'Select Product' }}</h2>
-        <div v-if="!selectedProductId" class="search-bar">
-          <input v-model="search" type="text" placeholder="Search products..." @input="fetchProducts(1)" />
+        <div class="modal-header">
+        <h2>Select Product</h2>
+        <div class="search-bar">
+          <input v-model="search" type="text" placeholder="Search products..." @input="fetchProducts" />
         </div>
-        <button @click="$emit('close')" class="close-button" title="Close">×</button>
+        <button type="button" @click.stop="$emit('close')" class="close-button" aria-label="Close modal">×</button>
       </div>
       <div class="modal-body">
         <div class="pos-layout">
@@ -69,7 +69,7 @@
             <div class="filter-options">
               <select
                 v-model="selectedCategory"
-                @change="fetchProducts(1)"
+                @change="fetchProducts"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Category</option>
@@ -88,7 +88,7 @@
 
               <select
                 v-model="stockStatus"
-                @change="fetchProducts(1)"
+                @change="fetchProducts"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Stock</option>
@@ -98,7 +98,7 @@
 
               <select
                 v-model="sort"
-                @change="fetchProducts(1)"
+                @change="fetchProducts"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Price</option>
@@ -108,7 +108,7 @@
 
               <select
                 v-model="color"
-                @change="fetchProducts(1)"
+                @change="fetchProducts"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Color</option>
@@ -123,7 +123,7 @@
 
               <select
                 v-model="size"
-                @change="fetchProducts(1)"
+                @change="fetchProducts"
                 class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
               >
                 <option value="">Filter by Size</option>
@@ -138,19 +138,13 @@
 
               <span
                 @click="resetFilters"
-                class="px-6 py-3 text-xl font-normal tracking-wider text-white text-center bg-blue-600 rounded-lg cursor-pointer custom-select"
+                class="px-6 py-3 text-xl font-normal tracking-wider text-white text-center bg-blue-600 rounded-lg custom-select"
               >
                 Reset
               </span>
             </div>
 
-            <!-- Loading State -->
-            <div v-if="loading" class="loading-state">
-              <p>Loading products...</p>
-            </div>
-
-            <!-- Products Grid -->
-            <div v-else-if="products.length > 0" class="horizontal-product-scroll">
+            <div class="horizontal-product-scroll">
               <div class="product-grid">
                 <label 
                   v-for="product in products" 
@@ -169,7 +163,6 @@
                     <div class="product-info">
                       <div class="info-line">Price: {{ product.selling_price }}.00 LKR</div>
                       <div class="info-line">Stock: {{ product.stock_quantity }}</div>
-                      <div class="info-line">code: {{ product.code}}</div>
                       <div class="info-line barcode">Barcode: {{ product.barcode }}</div>
                     </div>
                     <div class="select-circle">
@@ -179,16 +172,10 @@
                 </label>
               </div>
             </div>
-
-            <!-- No Products -->
-            <div v-else class="no-products">
-              <p>No products found</p>
-            </div>
-
-            <div v-if="products.length > 0" class="pos-pagination">
+            <div class="pos-pagination">
               <button 
                 class="pagination-button" 
-                @click="changePage(pagination.current_page - 1)" 
+                @click="fetchProducts(pagination.prev_page_url)" 
                 :disabled="!pagination.prev_page_url"
               >
                 Previous
@@ -198,7 +185,7 @@
               </span>
               <button 
                 class="pagination-button" 
-                @click="changePage(pagination.current_page + 1)" 
+                @click="fetchProducts(pagination.next_page_url)" 
                 :disabled="!pagination.next_page_url"
               >
                 Next
@@ -238,7 +225,6 @@
                 id="stock" 
                 placeholder="Enter stock quantity" 
                 class="form-input"
-                min="1"
               />
             </div>
             
@@ -281,19 +267,13 @@ const quantity = ref('');
 const search = ref("");
 const products = ref([]);
 const selectedProductId = ref(null);
-const pagination = ref({
-  current_page: 1,
-  last_page: 1,
-  prev_page_url: null,
-  next_page_url: null,
-});
+const pagination = ref({});
 const stockQuantity = ref(null);
 const selectedCategory = ref("");
 const stockStatus = ref("");
 const sort = ref("");
 const color = ref("");
 const size = ref("");
-const loading = ref(false);
 
 const allcategories = ref([]);
 const colors = ref([]);
@@ -342,17 +322,10 @@ const submitRefill = () => {
   resetForm();
 };
 
-const changePage = (page) => {
-  if (page >= 1 && page <= pagination.value.last_page) {
-    fetchProducts(page);
-  }
-};
-
-const fetchProducts = async (page = 1) => {
-  loading.value = true;
+const fetchProducts = async (url = "/api/products") => {
   try {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    const response = await fetch(`/api/products?page=${page}`, {
+    const response = await fetch(typeof url === "string" ? url : "/api/products", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -360,8 +333,7 @@ const fetchProducts = async (page = 1) => {
         "X-CSRF-TOKEN": token,
       },
       body: JSON.stringify({
-        page: page,
-        search: search.value.trim(),
+        search: search.value.trim(), // Ensure search input is trimmed
         category: selectedCategory.value,
         stock: stockStatus.value,
         sort: sort.value,
@@ -378,22 +350,15 @@ const fetchProducts = async (page = 1) => {
     if (data && data.products) {
       products.value = data.products.data || [];
       pagination.value = {
-        current_page: data.products.current_page || 1,
-        last_page: data.products.last_page || 1,
+        current_page: data.products.current_page,
+        last_page: data.products.last_page,
         prev_page_url: data.products.prev_page_url,
         next_page_url: data.products.next_page_url,
       };
-
-      // Load filter options on first load
-      if (data.categories) allcategories.value = data.categories;
-      if (data.colors) colors.value = data.colors;
-      if (data.sizes) sizes.value = data.sizes;
     }
   } catch (error) {
     console.error("Error fetching products:", error);
     alert("Failed to load products. Please try refreshing the page.");
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -429,8 +394,6 @@ const submitStock = async () => {
       selectedProductId.value = null;
       stockQuantity.value = null;
       alert("Stock added successfully!");
-      // Close the modal after successful submission
-      emit('close');
     } else {
       const errorData = await response.json();
       console.error("Error:", errorData);
@@ -449,8 +412,7 @@ const resetFilters = () => {
   sort.value = "";
   color.value = "";
   size.value = "";
-  search.value = "";
-  fetchProducts(1);
+  fetchProducts();
 };
 
 // Reset form when modal is closed
@@ -464,7 +426,7 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   if (newVal) {
     selectedProductId.value = null;
     stockQuantity.value = null;
-    fetchProducts(1);
+    fetchProducts();
   }
 });
 </script>
@@ -498,6 +460,7 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   align-items: center;
   padding: 15px 20px;
   border-bottom: 1px solid #e0e0e0;
+  position: relative; /* allow absolute close btn */
 }
 
 .modal-header h2 {
@@ -517,12 +480,21 @@ watch(() => props.isRefillModalOpen, (newVal) => {
 }
 
 .close-button {
-  background: none;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #ff4d4d;
+  color: #fff;
   border: none;
-  font-size: 24px;
-  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
   cursor: pointer;
-  padding: 0 8px;
+  z-index: 30;
 }
 
 .selected-product-info {
@@ -648,13 +620,6 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   min-width: 150px;
 }
 
-.loading-state, .no-products {
-  text-align: center;
-  padding: 60px 20px;
-  color: #666;
-  font-size: 16px;
-}
-
 .horizontal-product-scroll {
   overflow-x: auto;
   padding: 15px;
@@ -753,10 +718,10 @@ watch(() => props.isRefillModalOpen, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: 15px;
   background-color: #f5f5f5;
   border-radius: 4px;
-  margin: 0 20px;
+
 }
 
 .pagination-button {
@@ -781,13 +746,6 @@ watch(() => props.isRefillModalOpen, (newVal) => {
 .pagination-info {
   font-size: 14px;
   color: #666;
-}
-
-.search-bar input {
-  width: 300px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
 }
 
 .refill-form-section {

@@ -5,9 +5,7 @@
 /public/storage
 /storage/*.key
 /vendor
-/.env
 .env.backup
-.env.production
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
@@ -23,3 +21,4 @@ merge-development.sh
 *.sqlite*
 /node_modules
 /node_modules/@rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node
+config.bat
