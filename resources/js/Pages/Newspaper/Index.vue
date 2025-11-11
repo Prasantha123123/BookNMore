@@ -25,6 +25,32 @@
             Newspapers
           </p>
         </div>
+
+
+
+ <p
+          @click="
+            () => {
+              if (HasRole(['Admin'])) {
+                isReturnModalOpen = true;
+              }
+            }
+          "
+          :class="
+            HasRole(['Admin'])
+              ? 'md:px-12 py-4 px-4 md:text-2xl font-bold tracking-wider text-white uppercase bg-red-600 rounded-xl'
+              : 'md:px-12 py-4 px-4 md:text-2xl font-bold tracking-wider text-white uppercase bg-red-600 cursor-not-allowed rounded-xl'
+          "
+          :title="
+            HasRole(['Admin'])
+              ? ''
+              : 'You do not have permission to add more Newspapers'
+          "
+        >
+          <i class="md:pr-4 ri-add-circle-fill"></i> Return Newspaper
+        </p>
+
+
         <p
           @click="
             () => {
@@ -195,6 +221,12 @@
     </div>
   </div>
   <NewspaperCreateModel v-model:open="isCreateModalOpen" />
+  <NewspaperReturnModel
+    v-model:open="isReturnModalOpen"
+    :newspapers="newspapers ? newspapers.data : []"
+    @close="isReturnModalOpen = false"
+  />
+
   <NewspaperUpdateModel
     v-model:open="isUpdateModalOpen"
     :newspaper="selectedNewspaper"
@@ -221,10 +253,15 @@ import Banner from "@/Components/Banner.vue";
 import { debounce } from "lodash";
 import { HasRole } from "@/Utils/Permissions";
 import NewspaperCreateModel from "@/Components/custom/NewspaperCreateModel.vue";
+
+import NewspaperReturnModel from "@/Components/custom/NewspaperReturnModal.vue";
+
+
 import NewspaperUpdateModel from "@/Components/custom/NewspaperUpdateModel.vue";
 import NewspaperDeleteModel from "@/Components/custom/DeleteNewspaperModal.vue";
 
 const isCreateModalOpen = ref(false);
+const isReturnModalOpen = ref(false);
 const isUpdateModalOpen = ref(false);
 const selectedNewspaper = ref(null);
 const isDeleteModalOpen = ref(false);

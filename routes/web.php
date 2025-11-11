@@ -186,6 +186,8 @@ Route::get('/printout-services', [PrintoutController::class, 'index'])->name('pr
 
     Route::get('/api/categories', [PhotocopyServiceController::class, 'fetchCategories']);
     Route::get('/api/products', [PhotocopyServiceController::class, 'fetchProducts']);
+
+    Route::post('/newspapers/return', [NewspaperController::class, 'return'])->name('newspapers.return');
 });
 
 
