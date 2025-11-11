@@ -12,7 +12,6 @@ class PhotocopyServiceRawMaterial extends Model
     protected $fillable = [
         'photocopy_service_id',
         'product_id',
-        'quantity',
     ];
 
     public function photocopyService()

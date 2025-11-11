@@ -6,7 +6,7 @@
       <div class="flex min-h-full items-center justify-center p-4 text-center">
         <DialogPanel class="w-full max-w-6xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
           <div class="flex justify-between items-center mb-4">
-            <DialogTitle as="h3" class="text-lg font-medium leading-6 text-gray-900">
+            <DialogTitle as="h3" class="text-2xl font-medium  leading-6 text-gray-900">
               Select Photocopy Services
             </DialogTitle>
             <div class="flex items-center space-x-2">
@@ -41,27 +41,49 @@
           <div v-else>
             <!-- Grid Layout -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div v-for="service in paginatedServices" :key="service.id" class="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div class="flex items-start justify-between">
+              <div 
+                v-for="service in paginatedServices" 
+                :key="service.id" 
+                class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer relative"
+                :class="{
+                  'border-blue-500 bg-blue-50': isServiceSelected(service),
+                  'border-gray-200 bg-white': !isServiceSelected(service)
+                }"
+                @click="toggleServiceSelection(service)"
+              >
+                <!-- Selection Indicator -->
+                <div 
+                  class="absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
+                  :class="{
+                    'bg-blue-500 border-blue-500': isServiceSelected(service),
+                    'border-gray-300': !isServiceSelected(service)
+                  }"
+                >
+                  <svg 
+                    v-if="isServiceSelected(service)" 
+                    class="w-4 h-4 text-white" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+
+                <div class="flex items-start">
                   <div class="flex-1">
                     <h4 class="text-lg font-medium text-gray-900">{{ service.name }}</h4>
                     <p class="text-sm text-gray-600 mt-1">{{ service.description }}</p>
                     <div class="mt-2 space-y-1">
                       <p class="text-sm">pages: {{ service.pages }} </p>
                       <p class="text-sm">color: {{ service.color }} </p>
-                       <p class="text-sm">side: {{ service.side }} </p>
-                       <p class="text-sm">size: {{ service.size }} </p>
+                      <p class="text-sm">side: {{ service.side }} </p>
+                      <p class="text-sm">size: {{ service.size }} </p>
                       <p class="text-sm font-semibold text-blue-600">Total Price: {{ service.totalprice }} LKR</p>
-                      <p class="text-sm">Stock: {{ service.stock || 'N/A' }}</p>
+                     
                       <p v-if="service.barcode" class="text-sm text-gray-500">Barcode: {{ service.barcode }}</p>
                     </div>
                   </div>
-                  <input
-                    type="checkbox"
-                    :value="service"
-                    v-model="selectedServices"
-                    class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
                 </div>
               </div>
             </div>
@@ -180,6 +202,19 @@ const paginatedServices = computed(() => {
   const end = start + itemsPerPage;
   return filteredServices.value.slice(start, end);
 });
+
+const isServiceSelected = (service) => {
+  return selectedServices.value.some(selected => selected.id === service.id);
+};
+
+const toggleServiceSelection = (service) => {
+  const index = selectedServices.value.findIndex(selected => selected.id === service.id);
+  if (index === -1) {
+    selectedServices.value.push(service);
+  } else {
+    selectedServices.value.splice(index, 1);
+  }
+};
 
 watch(searchQuery, () => {
   currentPage.value = 1;

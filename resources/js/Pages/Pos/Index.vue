@@ -87,7 +87,7 @@
                                  <option value="Laminating">Laminating</option>
                               </select>
                               <button
-                                @click="openManualModal"
+                                @click="openModalBasedOnType"
                                 class="ml-4 px-6 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
                               >
                                 Open
@@ -390,6 +390,14 @@
       v-model:open="isSelectPrintoutModalOpen"
       @import-printouts="handleImportedPrintouts"
     />
+    <SelectLaminatingModal
+      v-model:open="isSelectLaminatingModalOpen"
+      @import-laminatings="handleImportedLaminatings"
+    />
+    <SelectBindingModel
+      v-model:open="isSelectBindingModalOpen"
+      @import-bindings="handleImportedBindings"
+    />
     <Footer />
 </template>
 <script setup>
@@ -409,6 +417,8 @@ import ProductAutoComplete from "@/Components/custom/ProductAutoComplete.vue";
 import { generateOrderId } from "@/Utils/Other.js";
 import SelectNewspaperModel from "@/Components/custom/SelectNewspaperModel.vue";
 import SelectPrintoutModel from '@/Components/custom/SelectPrintoutModel.vue';
+import SelectLaminatingModal from '@/Components/custom/SelectLaminatingModal.vue';
+import SelectBindingModel from '@/Components/custom/SelectBindingModel.vue';
 
 // Use dynamic import for SelectPhotocopyModel
 const SelectPhotocopyModel = defineAsyncComponent(() => 
@@ -463,6 +473,8 @@ const isSelectProductModalOpen = ref(false);
 const isSelectNewspaperModalOpen = ref(false);
 const isSelectPhotocopyModalOpen = ref(false);
 const isSelectPrintoutModalOpen = ref(false);
+const isSelectLaminatingModalOpen = ref(false);
+const isSelectBindingModalOpen = ref(false);
 
 const refreshData = () => {
     router.visit(route("pos.index"), {
@@ -755,6 +767,22 @@ const handleSelectedProducts = (selectedProducts) => {
     });
 };
 
+const openModalBasedOnType = () => {
+  if (selectedManualType.value === "binding") {
+    isSelectBindingModalOpen.value = true;
+  } else if (selectedManualType.value === "photocopy") {
+    isSelectPhotocopyModalOpen.value = true;
+  } else if (selectedManualType.value === "newspapers") {
+    isSelectNewspaperModalOpen.value = true;
+  } else if (selectedManualType.value === "printout") {
+    isSelectPrintoutModalOpen.value = true;
+  } else if (selectedManualType.value === "Laminating") {
+    isSelectLaminatingModalOpen.value = true;
+  } else {
+    isSelectProductModalOpen.value = true;
+  }
+};
+
 const openManualModal = () => {
   if (selectedManualType.value === "photocopy") {
     isSelectPhotocopyModalOpen.value = true;
@@ -762,6 +790,8 @@ const openManualModal = () => {
     isSelectNewspaperModalOpen.value = true;
   } else if (selectedManualType.value === "printout") {
     isSelectPrintoutModalOpen.value = true;
+  } else if (selectedManualType.value === "Laminating") {
+    isSelectLaminatingModalOpen.value = true;
   } else {
     isSelectProductModalOpen.value = true;
   }
@@ -832,6 +862,50 @@ const handleImportedPrintouts = (printouts) => {
   });
 };
 
+const handleImportedLaminatings = (laminatings) => {
+  laminatings.forEach((laminating) => {
+    const existingItem = products.value.find(
+      (item) => item.id === laminating.id && item.is_laminating === true
+    );
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      products.value.push({
+        ...laminating,
+        quantity: 1,
+        is_laminating: true,
+        name: laminating.name, // Ensure name is properly set
+        selling_price: laminating.selling_price, // Use the selling_price from API
+        cost_price: laminating.cost_price || laminating.price, // Fallback to price if cost_price not available
+        discount: 0,
+        discounted_price: laminating.selling_price,
+      });
+    }
+  });
+};
+
+const handleImportedBindings = (bindings) => {
+  bindings.forEach((binding) => {
+    const existingItem = products.value.find(
+      (item) => item.id === binding.id && item.is_binding === true
+    );
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      products.value.push({
+        ...binding,
+        quantity: 1,
+        is_binding: true,
+        name: binding.name, // Ensure name is properly set
+        selling_price: binding.selling_price, // Use the selling_price from API
+        cost_price: binding.cost_price || binding.price, // Fallback to price if cost_price not available
+        discount: 0,
+        discounted_price: binding.selling_price,
+      });
+    }
+  });
+};
+
 const photocopyTotalPrice = computed(() => {
     return products.value
         .filter((item) => item.is_photocopy)
@@ -839,13 +913,17 @@ const photocopyTotalPrice = computed(() => {
 });
 
 const generateReceipt = () => {
-    const receiptDetails = products.value
-        .filter((item) => item.is_photocopy)
-        .map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            totalprice: item.totalprice * item.quantity,
-        }));
+    const receiptDetails = products.value.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: item.selling_price,
+        total_price: item.selling_price * item.quantity,
+        type: item.is_photocopy ? 'photocopy' : 
+              item.is_printout ? 'printout' : 
+              item.is_laminating ? 'laminating' : 
+              item.is_binding ? 'binding' :
+              item.is_newspaper ? 'newspaper' : 'product'
+    }));
 
     console.log("Receipt Details:", receiptDetails);
     return receiptDetails;

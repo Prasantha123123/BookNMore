@@ -35,16 +35,42 @@
                 </option>
               </select>
 
-              <select
-                v-model="stockStatus"
-                @change="fetchProducts"
-                class="filter-select"
-              >
-                <option value="">All Stock Status</option>
-                <option value="in">In Stock</option>
-                <option value="low">Low Stock</option>
-                <option value="out">Out of Stock</option>
-              </select>
+             
+               <select
+            v-model="stockStatus"
+            @change="fetchProducts"
+            class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
+          >
+            <option value="">Filter by Stock</option>
+            <option value="in">In Stock</option>
+            <option value="out">Out of Stock</option>
+          </select>
+
+          <select
+            v-model="sort"
+            @change="fetchProducts"
+            class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
+          >
+            <option value="">Filter by Price</option>
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+
+
+          <select
+            v-model="size"
+            @change="fetchProducts"
+            class="px-6 py-3 text-xl font-normal tracking-wider text-blue-600 bg-white rounded-lg cursor-pointer custom-select"
+          >
+            <option value="">Filter by Size</option>
+            <option
+              v-for="sizeOption in sizes"
+              :key="sizeOption.id"
+              :value="sizeOption.name"
+            >
+              {{ sizeOption.name }}
+            </option>
+          </select>
 
               <button
                 @click="resetFilters"
@@ -82,6 +108,12 @@
                         <span class="label">Stock:</span>
                         <span class="value" :class="getStockClass(product.stock_quantity)">
                           {{ product.stock_quantity }}
+                        </span>
+                      </div>
+                       <div class="info-line">
+                        <span class="label">code:</span>
+                        <span class="value" :class="getStockClass(product.code)">
+                          {{ product.code }}
                         </span>
                       </div>
                       <div class="info-line barcode">
@@ -138,6 +170,7 @@
                 <span class="info-label">Price:</span>
                 <span class="info-value">{{ formatPrice(selectedProduct?.selling_price) }} LKR</span>
               </div>
+              
               <div class="info-row">
                 <span class="info-label">Barcode:</span>
                 <span class="info-value">{{ selectedProduct?.barcode || 'N/A' }}</span>
@@ -165,22 +198,7 @@
               <div v-if="quantityError" class="error-message">{{ quantityError }}</div>
             </div>
 
-            <div class="summary-section">
-              <div class="summary-row">
-                <span class="summary-label">Current Stock:</span>
-                <span class="summary-value">{{ selectedProduct?.stock_quantity || 0 }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Adding:</span>
-                <span class="summary-value">+{{ stockQuantity || 0 }}</span>
-              </div>
-              <div class="summary-row total">
-                <span class="summary-label">New Total Stock:</span>
-                <span class="summary-value">
-                  {{ (selectedProduct?.stock_quantity || 0) + (stockQuantity || 0) }}
-                </span>
-              </div>
-            </div>
+           
             
             <div class="form-actions">
               <button 
@@ -347,7 +365,8 @@ const fetchCategories = async () => {
       throw new Error('Failed to fetch categories');
     }
     
-    categories.value = await response.json();
+    const data = await response.json();
+    categories.value = Array.isArray(data.categories) ? data.categories : [];
   } catch (error) {
     console.error('Error fetching categories:', error);
     // Use empty array as fallback
@@ -372,7 +391,7 @@ const submitRefill = async () => {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        'X-Requested-With': 'XMLHttpRequest'
       },
       body: JSON.stringify({
         product_id: selectedProduct.value.id,

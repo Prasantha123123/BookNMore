@@ -6,7 +6,7 @@
         <div class="search-bar">
           <input v-model="search" type="text" placeholder="Search products..." @input="handleSearchInput" />
         </div>
-        <button @click="closeModal" class="close-button">×</button>
+        <button type="button" @click.stop="closeModal" class="close-button">×</button>
       </div>
       <div class="modal-body">
         <div v-if="!selectedProductId" class="filter-options">
@@ -110,6 +110,7 @@
                 <div class="product-info">
                   <div class="info-line">Price: {{ product.selling_price }}.00 LKR</div>
                   <div class="info-line">Stock: {{ product.stock_quantity }}</div>
+                  <div class="info-line">Code: {{ product.code }}</div>
                   <div class="info-line barcode">Barcode: {{ product.barcode }}</div>
                 </div>
                 <div class="select-circle">
@@ -166,7 +167,7 @@
             >
               Submit
             </button>
-            <button class="cancel-button" @click="closeModal">Cancel</button>
+            <button type="button" class="cancel-button" @click.stop="closeModal">Cancel</button>
           </div>
         </div>
 
@@ -204,7 +205,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'refill-submitted']);
+const emit = defineEmits(['update:modelValue', 'refill-submitted', 'close']);
 
 const search = ref("");
 const products = ref([]);
@@ -239,6 +240,7 @@ const totalPages = computed(() => pagination.value.last_page || 1);
 const closeModal = () => {
   console.log("closeModal triggered"); // Debugging log
   emit('update:modelValue', false);
+  emit('close'); // Also emit close event for compatibility
   selectedProductId.value = null;
   stockQuantity.value = null;
   resetFilters();
@@ -428,11 +430,24 @@ onMounted(() => {
 }
 
 .close-button {
-  background: none;
+  background: #f44336;
+  color: white;
   border: none;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
   font-size: 24px;
   cursor: pointer;
-  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 10;
+  position: relative;
+}
+
+.close-button:hover {
+  background: #d32f2f;
 }
 
 .filter-options {
@@ -634,7 +649,7 @@ onMounted(() => {
 
 .info-row {
   display: flex;
-  justify-content: space-between;
+  gap: 30px;
   margin-bottom: 8px;
   font-size: 14px;
 }

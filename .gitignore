@@ -5,9 +5,7 @@
 /public/storage
 /storage/*.key
 /vendor
-.env
 .env.backup
-.env.production
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
@@ -46,3 +44,4 @@ storage/logs/*.log
 # Temporary files
 /tmp/
 /temp/
+config.bat
